@@ -1,5 +1,11 @@
-@main def hello(): Unit =
-  println("Hello world!")
-  println(msg)
+import gears.async.*
+import gears.async.default.given
 
-def msg = "I was compiled by Scala 3. :)"
+@main def hello() =
+  Async.blocking:
+    val hello = Future:
+      print("Hello")
+    val world = Future:
+      hello.await
+      println(", world!")
+    world.await
