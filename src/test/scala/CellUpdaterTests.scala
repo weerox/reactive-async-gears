@@ -9,9 +9,22 @@ class CellUpdaterTests extends munit.FunSuite {
 
   val handler = Handler[Int](NumberLattice())
 
-  test("cell update") {
-    val cell = CellUpdater[Int](using handler)
+  test("single cell update") {
+    val cell = CellUpdater(using handler)
     cell.update(1)
     assertEquals(cell.get, 1)
+  }
+
+  test("two cell updates") {
+    val cell = CellUpdater(using handler)
+    cell.update(1)
+    cell.update(1)
+    assertEquals(cell.get, 2)
+  }
+
+  test("multiple cell updates") {
+    val cell = CellUpdater(using handler)
+    for _ <- (1 to 10) do cell.update(1)
+    assertEquals(cell.get, 10)
   }
 }
