@@ -10,4 +10,4 @@ import scala.collection.mutable.ListBuffer
 */
 class Handler[V](val lattice: Lattice[V]):
 	private[rasync] val cells: ListBuffer[CellUpdater[V]] = ListBuffer()
-	private[rasync] val initializers: ListBuffer[(CellUpdater[V], () => Async ?=> V)] = ListBuffer()
+	private[rasync] val initializers: ListBuffer[(CellUpdater[V], () => Async ?=> Outcome[V])] = ListBuffer()

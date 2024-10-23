@@ -10,9 +10,9 @@ class ReactiveAsyncTests extends munit.FunSuite {
 		given Lattice[Int] = NumberLattice()
 		val (cell1, cell2) = ReactiveAsync.handler:
 			val cell1 = ReactiveAsync.cell: () =>
-				42
+				Update(42)
 			val cell2 = ReactiveAsync.cell: () =>
-				26
+				Update(26)
 			(cell1, cell2)
 		assertEquals(cell1.get, 42)
 		assertEquals(cell2.get, 26)
