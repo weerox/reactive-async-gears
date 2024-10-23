@@ -4,9 +4,9 @@ import gears.async.default.given
 import gears.async.{ Async, Future }
 
 object ReactiveAsync:
-	def handler[V](body: Handler[V] ?=> Unit)(using lattice: Lattice[V]): Handler[V] =
+	def handler[V, T](body: Handler[V] ?=> T)(using lattice: Lattice[V]): T =
 		val handler = Handler[V](lattice)
-		body(using handler)
+		val result = body(using handler)
 		Async.blocking:
 			val (cells, inits) = handler.initializers.toList.unzip
 			val results = inits.map { init =>
@@ -14,7 +14,7 @@ object ReactiveAsync:
 					init()
 			}.awaitAll
 			cells.zip(results).map((cell, result) => cell.update(result))
-		handler
+		result
 
 	def cell[V](using handler: Handler[V]): Cell[V] =
 		val cell = CellUpdater[V]()
