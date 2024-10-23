@@ -1,5 +1,5 @@
 package rasync
 
 trait Cell[V]:
-	def get: V
-	def isComplete(): Boolean
+  def get: V
+  def isComplete(): Boolean
