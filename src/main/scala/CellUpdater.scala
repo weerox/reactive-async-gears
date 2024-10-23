@@ -1,11 +1,22 @@
 package rasync
 
 private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
-  private var value: V = handler.lattice.bottom
+  private var state: State[V] = Intermediate(handler.lattice.bottom)
 
-  override def get: V = value
-  override def isComplete(): Boolean = ???
+  override def get: V = state match
+    case Intermediate(value) => value
+    case Completed(value)    => value
+    case Failed(exception)   => throw exception
 
-  def update(value: V): Unit =
-    this.value = handler.lattice.join(this.value, value)
-  def complete(): Unit = ???
+  override def isComplete(): Boolean = state match
+    case Completed(_) => true
+    case _            => false
+
+  def update(value: V): Unit = state match
+    case Intermediate(current) =>
+      state = Intermediate(handler.lattice.join(current, value))
+    case _ =>
+
+  def complete(): Unit = state match
+    case Intermediate(value) => state = Completed(value)
+    case _                   =>
