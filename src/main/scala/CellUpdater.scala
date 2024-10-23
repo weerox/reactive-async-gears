@@ -1,7 +1,7 @@
 package rasync
 
 private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
-	private var value: V = ???
+	private var value: V = handler.lattice.bottom
 
 	override def get: V = value
 	override def isComplete(): Boolean = ???
