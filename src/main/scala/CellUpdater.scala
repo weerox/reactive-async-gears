@@ -1,7 +1,9 @@
 package rasync
 
 private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
-  private var state: State[V] = Intermediate(handler.lattice.bottom)
+
+  private var _state: State[V] = Intermediate(handler.lattice.bottom)
+  override def state: State[V] = _state
 
   override def get: V = state match
     case Intermediate(value) => value
@@ -14,9 +16,9 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
 
   def update(value: V): Unit = state match
     case Intermediate(current) =>
-      state = Intermediate(handler.lattice.join(current, value))
+      _state = Intermediate(handler.lattice.join(current, value))
     case _ =>
 
   def complete(): Unit = state match
-    case Intermediate(value) => state = Completed(value)
+    case Intermediate(value) => _state = Completed(value)
     case _                   =>
