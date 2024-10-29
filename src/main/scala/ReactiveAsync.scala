@@ -1,27 +1,12 @@
 package rasync
 
-import gears.async.default.given
-import gears.async.{Async, Future}
+import gears.async.Async
 
 object ReactiveAsync:
   def handler[V, T](body: Handler[V] ?=> T)(using lattice: Lattice[V]): T =
     val handler = Handler[V](lattice)
     val result = body(using handler)
-    Async.blocking:
-      val (cells, inits) = handler.initializers.toList.unzip
-      val results = inits.map { init =>
-        Future:
-          init()
-      }.awaitAll
-      cells
-        .zip(results)
-        .map((cell, result) =>
-          result match
-            case Update(value)         => cell.update(value)
-            case Complete(None)        => cell.complete()
-            case Complete(Some(value)) => cell.update(value); cell.complete()
-            case Nothing               =>
-        )
+    handler.initialize()
     result
 
   def cell[V](using handler: Handler[V]): Cell[V] =
