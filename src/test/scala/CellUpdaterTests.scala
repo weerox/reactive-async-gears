@@ -1,4 +1,5 @@
 package rasync
+package test
 
 class CellUpdaterTests extends munit.FunSuite {
 

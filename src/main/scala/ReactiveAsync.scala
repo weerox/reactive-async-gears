@@ -7,6 +7,7 @@ object ReactiveAsync:
     val handler = Handler[V](lattice)
     val result = body(using handler)
     handler.initialize()
+    handler.run()
     result
 
   def cell[V](using handler: Handler[V]): Cell[V] =
