@@ -5,7 +5,7 @@ import gears.async.Async
 object ReactiveAsync:
   def handler[V, T](body: Handler[V] ?=> T)(using lattice: Lattice[V]): T =
     val handler = Handler[V](lattice)
-    val result = body(using handler)
+    val result  = body(using handler)
     handler.initialize()
     handler.run()
     result

@@ -15,6 +15,7 @@ lazy val root = project
   .configs(Benchmark)
   .settings(
     inConfig(Benchmark)(Defaults.testSettings),
+    inConfig(Benchmark)(org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings),
     Benchmark / testFrameworks += new TestFramework(
       "org.scalameter.ScalaMeterFramework"
     ),

@@ -1,24 +1,25 @@
 package rasync
 package bench
 
-import org.scalameter.api._
-import org.scalameter.picklers.Implicits._
-import org.scalameter._
+import org.scalameter.api.*
+import org.scalameter.picklers.Implicits.*
+import org.scalameter.*
 
-import rasync.{ReactiveAsync, Handler, Lattice, Cell, Complete, Nothing}
-import rasync.{Completed}
+import rasync.{ Cell, Complete, Handler, Lattice, Nothing, ReactiveAsync }
+import rasync.Completed
 
 class SetLattice[T] extends Lattice[Set[T]]:
   override val bottom: Set[T] = Set()
-  override def join(x: Set[T], y: Set[T]): Set[T] = x union y
+
+  override def join(x: Set[T], y: Set[T]): Set[T]  = x union y
   override def lteq(x: Set[T], y: Set[T]): Boolean = x subsetOf y
 
 class Marker
 
 object TreeBench extends Bench.LocalTime:
-  val depth = Gen.single("depth")(14)
+  val depth  = Gen.single("depth")(14)
   val degree = Gen.single("degree")(2)
-  val tree = depth.cross(degree)
+  val tree   = depth.cross(degree)
 
   /*
   2^16 leaves:
@@ -37,24 +38,22 @@ object TreeBench extends Bench.LocalTime:
           Handler[Set[Marker]]
       ): Cell[Set[Marker]] =
         if height == 0 then
-          ReactiveAsync.cell { () => Complete(Some(Set(Marker()))) }
+          ReactiveAsync.cell(() => Complete(Some(Set(Marker()))))
         else
-          val cells = Seq.fill(degree) { build(height - 1, degree) }
-          val sum = ReactiveAsync.cell[Set[Marker]]
+          val cells = Seq.fill(degree)(build(height - 1, degree))
+          val sum   = ReactiveAsync.cell[Set[Marker]]
           sum.when(cells) { cells =>
             if cells.forall(cell =>
-                cell match {
+                cell match
                   case Completed(_) => true
                   case _            => false
-                }
               )
             then
               val set: Set[Marker] = cells
                 .foldLeft(Set()) { (acc, x) =>
-                  x match {
+                  x match
                     case Completed(x) => acc union x
                     case _            => acc
-                  }
                 }
               Complete(Some(set))
             else Nothing

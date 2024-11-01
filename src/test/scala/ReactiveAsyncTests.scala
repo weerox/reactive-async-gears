@@ -1,10 +1,10 @@
 package rasync
 package test
 
-class ReactiveAsyncTests extends munit.FunSuite {
+class ReactiveAsyncTests extends munit.FunSuite:
   class NumberLattice extends Lattice[Int]:
-    override val bottom: Int = 0
-    override def join(x: Int, y: Int): Int = x + y
+    override val bottom: Int                   = 0
+    override def join(x: Int, y: Int): Int     = x + y
     override def lteq(x: Int, y: Int): Boolean = x <= y
 
   test("cell initialization") {
@@ -58,4 +58,3 @@ class ReactiveAsyncTests extends munit.FunSuite {
       cell3
     assertEquals(cell.get, 72)
   }
-}
