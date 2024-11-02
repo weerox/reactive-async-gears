@@ -1,12 +1,8 @@
 package rasync
 package bench
 
-import org.scalameter.api.*
-import org.scalameter.picklers.Implicits.*
 import org.scalameter.*
-
-import rasync.{ Cell, Complete, Handler, Lattice, Nothing, ReactiveAsync }
-import rasync.Completed
+import org.scalameter.picklers.Implicits.*
 
 class SetLattice[T] extends Lattice[Set[T]]:
   override val bottom: Set[T] = Set()
