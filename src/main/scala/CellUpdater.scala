@@ -11,11 +11,11 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
   private var _state: State[V] = Intermediate(handler.lattice.bottom)
   override def state: State[V] = _state
 
-  override def get: V = state match
+  override def get: V = _state match
     case Value(value)      => value
     case Failed(exception) => throw exception
 
-  override def isComplete(): Boolean = state match
+  override def isComplete(): Boolean = _state match
     case Completed(_) => true
     case _            => false
 
@@ -23,12 +23,12 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
       body: Iterable[State[V]] => Outcome[V]
   ): Unit = this.dependencies += dependencies -> body
 
-  def update(value: V): Unit = state match
+  def update(value: V): Unit = _state match
     case Intermediate(current) =>
       _state = Intermediate(handler.lattice.join(current, value))
     case _ =>
 
-  def complete(): Unit = state match
+  def complete(): Unit = _state match
     case Intermediate(value) =>
       _state = Completed(value)
       dependencies.clear()
