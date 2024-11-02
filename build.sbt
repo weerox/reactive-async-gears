@@ -6,6 +6,7 @@ lazy val root = project
     name         := "reactive-async-gears",
     version      := "0.1.0-SNAPSHOT",
     scalaVersion := "3.5.2",
+    scalacOptions += "-explain",
     scalacOptions += "-Wunused:all",
     libraryDependencies += "ch.epfl.lamp" %% "gears" % "0.2.0",
     libraryDependencies += "org.scala-lang.modules" %% "scala-collection-contrib" % "0.3.0",
