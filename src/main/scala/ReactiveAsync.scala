@@ -20,8 +20,5 @@ object ReactiveAsync:
   ): Cell[V] =
     val cell = CellUpdater[V]()
     handler.cells += cell
-    // For some reason, Scala doesn't like it if the tuple is used directly
-    // in the assignment expression.
-    val tmp = (cell, init)
-    handler.initializers += tmp
+    handler.initializers += cell -> init
     cell

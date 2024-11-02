@@ -3,7 +3,7 @@ package rasync
 import gears.async.default.given
 import gears.async.{ Async, Future }
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ ListBuffer, Map }
 
 /*
  A handler is restricted to hold cells with value V.
@@ -12,8 +12,10 @@ import scala.collection.mutable.ListBuffer
  */
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
   val cells: ListBuffer[CellUpdater[V]] = ListBuffer()
-  val initializers: ListBuffer[(CellUpdater[V], () => Async ?=> Outcome[V])] =
-    ListBuffer()
+  val initializers: Map[
+    CellUpdater[V],
+    () => Async ?=> Outcome[V]
+  ] = Map()
 
   def initialize(): Unit =
     val (cells, inits) = initializers.toList.unzip
