@@ -12,9 +12,8 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
   override def state: State[V] = _state
 
   override def get: V = state match
-    case Intermediate(value) => value
-    case Completed(value)    => value
-    case Failed(exception)   => throw exception
+    case Value(value)      => value
+    case Failed(exception) => throw exception
 
   override def isComplete(): Boolean = state match
     case Completed(_) => true
