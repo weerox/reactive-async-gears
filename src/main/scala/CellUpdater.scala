@@ -3,11 +3,6 @@ package rasync
 import scala.collection.mutable.MultiDict
 
 private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
-  private[rasync] var dependencies: MultiDict[
-    Iterable[Cell[V]],
-    Iterable[State[V]] => Outcome[V]
-  ] = MultiDict()
-
   private var _state: State[V] = Intermediate(handler.lattice.bottom)
   override def state: State[V] = _state
 
@@ -21,7 +16,8 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
 
   override def when(dependencies: Iterable[Cell[V]])(
       body: Iterable[State[V]] => Outcome[V]
-  ): Unit = this.dependencies += dependencies -> body
+  ): Unit =
+    handler.dependencies.getOrElseUpdate(this, MultiDict()) += dependencies -> body
 
   def update(value: V): Unit = _state match
     case Intermediate(current) =>
@@ -31,5 +27,7 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
   def complete(): Unit = _state match
     case Intermediate(value) =>
       _state = Completed(value)
-      dependencies.clear()
+      handler.dependencies.get(this) match
+        case Some(map) => map.clear()
+        case _         =>
     case _ =>

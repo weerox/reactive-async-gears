@@ -4,6 +4,7 @@ import gears.async.default.given
 import gears.async.{ Async, Future }
 
 import scala.collection.mutable.{ ListBuffer, Map }
+import scala.collection.mutable.MultiDict
 
 /*
  A handler is restricted to hold cells with value V.
@@ -12,9 +13,18 @@ import scala.collection.mutable.{ ListBuffer, Map }
  */
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
   val cells: ListBuffer[CellUpdater[V]] = ListBuffer()
+
   val initializers: Map[
     CellUpdater[V],
     () => Async ?=> Outcome[V]
+  ] = Map()
+
+  val dependencies: Map[
+    CellUpdater[V],
+    MultiDict[
+      Iterable[Cell[V]],
+      Iterable[State[V]] => Outcome[V]
+    ]
   ] = Map()
 
   def initialize(): Unit =
@@ -40,9 +50,9 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     ] = Seq()
 
     while
-      whens = cells.toList
-        .flatMap(dependent =>
-          dependent.dependencies.iterator.map((dependencies, code) =>
+      whens = dependencies.toList
+        .flatMap((dependent, dependencies) =>
+          dependencies.iterator.map((dependencies, code) =>
             (dependent, (dependencies, code))
           )
         )
