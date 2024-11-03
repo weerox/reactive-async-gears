@@ -1,7 +1,12 @@
 package rasync
 package cell
 
-import scala.collection.mutable.MultiDict
+import gears.async.Async
+
+import util.{ Container, ContainerMap }
+import handler.SingletonDependencyHandler
+import handler.IterableDependencyHandler
+import handler.TupleDependencyHandler
 
 private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
   private var _state: State[V] = Intermediate(handler.lattice.bottom)
@@ -16,9 +21,19 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
     case _            => false
 
   override def when(dependencies: Iterable[Cell[V]])(
-      body: Iterable[State[V]] => Outcome[V]
-  ): Unit =
-    handler.dependencies.getOrElseUpdate(this, MultiDict()) += dependencies -> body
+      body: Iterable[State[V]] => Async ?=> Outcome[V]
+  ): Unit = handler.dependencies += this -> IterableDependencyHandler(dependencies, body)
+
+  override def when(dependencies: Cell[V])(
+      body: State[V] => Async ?=> Outcome[V]
+  ): Unit = handler.dependencies += this -> SingletonDependencyHandler(dependencies, body)
+
+  override def when[
+      Args <: Tuple: Container[Cell],
+      Params <: ContainerMap[Args, Cell, State]
+  ](dependencies: Args)(
+      body: Params => Async ?=> Outcome[V]
+  ): Unit = handler.dependencies += this -> TupleDependencyHandler(dependencies, body)
 
   def update(value: V): Unit = _state match
     case Intermediate(current) =>
@@ -28,7 +43,5 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
   def complete(): Unit = _state match
     case Intermediate(value) =>
       _state = Completed(value)
-      handler.dependencies.get(this) match
-        case Some(map) => map.clear()
-        case _         =>
+      handler.dependencies.removeKey(this)
     case _ =>

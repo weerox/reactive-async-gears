@@ -1,8 +1,9 @@
 package rasync
 
-import cell.{ Cell, CellUpdater }
-
 import gears.async.Async
+
+import cell.{ Cell, CellUpdater }
+import handler.InitializationHandler
 
 object ReactiveAsync:
   def handler[V, T](body: Handler[V] ?=> T)(using lattice: Lattice[V]): T =
@@ -22,5 +23,5 @@ object ReactiveAsync:
   ): Cell[V] =
     val cell = CellUpdater[V]()
     handler.cells += cell
-    handler.initializers += cell -> init
+    handler.initializers += cell -> InitializationHandler(init)
     cell

@@ -1,11 +1,13 @@
 package rasync
 
-import cell.{ Cell, CellUpdater }
-
 import gears.async.default.given
 import gears.async.{ Async, Future }
 
 import scala.collection.mutable.{ ListBuffer, Map, MultiDict }
+
+import cell.CellUpdater
+import handler.DependencyHandler
+import handler.InitializationHandler
 
 /*
  A handler is restricted to hold cells with value V.
@@ -17,61 +19,49 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
 
   val initializers: Map[
     CellUpdater[V],
-    () => Async ?=> Outcome[V]
+    InitializationHandler[V]
   ] = Map()
 
-  val dependencies: Map[
+  val dependencies: MultiDict[
     CellUpdater[V],
-    MultiDict[
-      Iterable[Cell[V]],
-      Iterable[State[V]] => Outcome[V]
-    ]
-  ] = Map()
+    DependencyHandler[V, ?, ?]
+  ] = MultiDict()
 
   def initialize(): Unit =
-    val (cells, inits) = initializers.toList.unzip
+    val (cells, handlers) = initializers.toSeq.unzip
     val results = Async.blocking:
-      inits.map { init =>
+      handlers.map { handler =>
         Future:
-          init()
+          handler.run()
       }.awaitAll
     cells
       .zip(results)
       .map { (cell, result) =>
         result match
-          case Update(value)         => cell.update(value)
-          case Complete(None)        => cell.complete()
-          case Complete(Some(value)) => cell.update(value); cell.complete()
-          case Nothing               =>
+          case Update(value)  => cell.update(value)
+          case Complete(None) => cell.complete()
+          case Complete(Some(value)) =>
+            cell.update(value)
+            cell.complete()
+          case Nothing =>
       }
 
   def run(): Unit =
-    var whens: Seq[
-      (CellUpdater[V], (Iterable[Cell[V]], Iterable[State[V]] => Outcome[V]))
-    ] = Seq()
-
-    while
-      whens = dependencies.toList
-        .flatMap((dependent, dependencies) =>
-          dependencies.iterator.map((dependencies, code) =>
-            (dependent, (dependencies, code))
-          )
-        )
-      whens.size != 0
-    do
-      val (dependents, code) = whens.unzip
+    while dependencies.size != 0 do
+      val (dependents, handlers) = dependencies.toSeq.unzip
 
       val results = Async.blocking:
-        code.map { (dependencies, code) =>
+        handlers.map(handler =>
           Future:
-            code(dependencies.map(cell => cell.state))
-        }.awaitAll
+            handler.run()
+        ).awaitAll
 
       dependents.zip(results).map { (dependent, result) =>
         result match
           case Update(value)  => dependent.update(value)
           case Complete(None) => dependent.complete()
           case Complete(Some(value)) =>
-            dependent.update(value); dependent.complete()
+            dependent.update(value)
+            dependent.complete()
           case Nothing =>
       }
