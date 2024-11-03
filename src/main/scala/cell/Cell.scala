@@ -1,4 +1,5 @@
 package rasync
+package cell
 
 trait Cell[V]:
   def get: V

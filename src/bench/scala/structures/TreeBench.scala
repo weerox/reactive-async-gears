@@ -1,6 +1,8 @@
 package rasync
 package bench
 
+import cell.Cell
+
 import org.scalameter.*
 import org.scalameter.picklers.Implicits.*
 

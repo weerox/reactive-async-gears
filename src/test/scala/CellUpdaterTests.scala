@@ -1,6 +1,8 @@
 package rasync
 package test
 
+import cell.CellUpdater
+
 class CellUpdaterTests extends munit.FunSuite:
 
   class NumberLattice extends Lattice[Int]:

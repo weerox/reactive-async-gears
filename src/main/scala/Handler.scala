@@ -1,10 +1,11 @@
 package rasync
 
+import cell.{ Cell, CellUpdater }
+
 import gears.async.default.given
 import gears.async.{ Async, Future }
 
-import scala.collection.mutable.{ ListBuffer, Map }
-import scala.collection.mutable.MultiDict
+import scala.collection.mutable.{ ListBuffer, Map, MultiDict }
 
 /*
  A handler is restricted to hold cells with value V.

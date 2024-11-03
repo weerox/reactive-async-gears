@@ -1,5 +1,7 @@
 package rasync
 
+import cell.{ Cell, CellUpdater }
+
 import gears.async.Async
 
 object ReactiveAsync:
