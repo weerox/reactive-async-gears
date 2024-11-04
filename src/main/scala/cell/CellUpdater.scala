@@ -8,8 +8,10 @@ import handler.SingletonDependencyHandler
 import handler.IterableDependencyHandler
 import handler.TupleDependencyHandler
 
-private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
-  private var _state: State[V] = Intermediate(handler.lattice.bottom)
+private[rasync] class CellUpdater[V](using handler: Handler, lattice: Lattice[V]) extends Cell[V]:
+  type Value = V
+
+  private var _state: State[V] = Intermediate(lattice.bottom)
   override def state: State[V] = _state
 
   override def get: V = _state match
@@ -20,12 +22,12 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
     case Completed(_) => true
     case _            => false
 
-  override def when(dependencies: Iterable[Cell[V]])(
-      body: Iterable[State[V]] => Async ?=> Outcome[V]
+  override def when[T](dependencies: Iterable[Cell[T]])(
+      body: Iterable[State[T]] => Async ?=> Outcome[V]
   ): Unit = handler.dependencies += this -> IterableDependencyHandler(dependencies, body)
 
-  override def when(dependencies: Cell[V])(
-      body: State[V] => Async ?=> Outcome[V]
+  override def when[T](dependencies: Cell[T])(
+      body: State[T] => Async ?=> Outcome[V]
   ): Unit = handler.dependencies += this -> SingletonDependencyHandler(dependencies, body)
 
   override def when[
@@ -37,7 +39,7 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
 
   def update(value: V): Unit = _state match
     case Intermediate(current) =>
-      _state = Intermediate(handler.lattice.join(current, value))
+      _state = Intermediate(lattice.join(current, value))
     case _ =>
 
   def complete(): Unit = _state match

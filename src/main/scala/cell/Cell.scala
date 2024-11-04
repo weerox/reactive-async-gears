@@ -10,12 +10,12 @@ trait Cell[V]:
   def state: State[V]
   def isComplete(): Boolean
 
-  def when(dependencies: Iterable[Cell[V]])(
-      body: Iterable[State[V]] => Async ?=> Outcome[V]
+  def when[T](dependencies: Iterable[Cell[T]])(
+      body: Iterable[State[T]] => Async ?=> Outcome[V]
   ): Unit
 
-  def when(dependencies: Cell[V])(
-      body: State[V] => Async ?=> Outcome[V]
+  def when[T](dependencies: Cell[T])(
+      body: State[T] => Async ?=> Outcome[V]
   ): Unit
 
   def when[

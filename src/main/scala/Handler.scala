@@ -9,22 +9,17 @@ import cell.CellUpdater
 import handler.DependencyHandler
 import handler.InitializationHandler
 
-/*
- A handler is restricted to hold cells with value V.
- It would be kinda nice to allow a handler to hold cells of different values,
- but I'm not sure that is safe to do/the type system won't like it.
- */
-class Handler[V] private[rasync] (val lattice: Lattice[V]):
-  val cells: ListBuffer[CellUpdater[V]] = ListBuffer()
+class Handler private[rasync]:
+  val cells: ListBuffer[CellUpdater[?]] = ListBuffer()
 
   val initializers: Map[
-    CellUpdater[V],
-    InitializationHandler[V]
+    CellUpdater[?],
+    InitializationHandler[?]
   ] = Map()
 
   val dependencies: MultiDict[
-    CellUpdater[V],
-    DependencyHandler[V, ?, ?]
+    CellUpdater[?],
+    DependencyHandler[?, ?, ?]
   ] = MultiDict()
 
   def initialize(): Unit =
@@ -38,10 +33,10 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       .zip(results)
       .map { (cell, result) =>
         result match
-          case Update(value)  => cell.update(value)
+          case Update(value)  => cell.update(value.asInstanceOf[cell.Value])
           case Complete(None) => cell.complete()
           case Complete(Some(value)) =>
-            cell.update(value)
+            cell.update(value.asInstanceOf[cell.Value])
             cell.complete()
           case Nothing =>
       }
@@ -58,10 +53,10 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
 
       dependents.zip(results).map { (dependent, result) =>
         result match
-          case Update(value)  => dependent.update(value)
+          case Update(value)  => dependent.update(value.asInstanceOf[dependent.Value])
           case Complete(None) => dependent.complete()
           case Complete(Some(value)) =>
-            dependent.update(value)
+            dependent.update(value.asInstanceOf[dependent.Value])
             dependent.complete()
           case Nothing =>
       }

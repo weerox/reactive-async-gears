@@ -58,3 +58,23 @@ class ReactiveAsyncTests extends munit.FunSuite:
       cell3
     assertEquals(cell.get, 72)
   }
+
+  test("string and int cell") {
+
+    class StringLattice extends Lattice[String]:
+      override val bottom: String                      = ""
+      override def join(x: String, y: String): String  = x ++ y
+      override def lteq(x: String, y: String): Boolean = x <= y
+
+    given Lattice[Int]    = NumberLattice()
+    given Lattice[String] = StringLattice()
+
+    val (s, i) = ReactiveAsync.handler:
+      val s = ReactiveAsync.cell[String](() => Complete(Some("foo")))
+      val i = ReactiveAsync.cell[Int](() => Complete(Some(42)))
+
+      (s, i)
+
+    assertEquals(s.state, Completed("foo"))
+    assertEquals(i.state, Completed(42))
+  }

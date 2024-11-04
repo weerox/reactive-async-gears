@@ -9,10 +9,10 @@ import util.{ Container, ContainerMap }
 private[rasync] trait DependencyHandler[V, Args, Params] extends Handler[Params, Outcome[V]]:
   val arguments: Args
 
-private[rasync] class IterableDependencyHandler[V](
-    val arguments: Iterable[Cell[V]],
-    val handler: Iterable[State[V]] => Async ?=> Outcome[V]
-) extends DependencyHandler[V, Iterable[Cell[V]], Iterable[State[V]]]:
+private[rasync] class IterableDependencyHandler[T, V](
+    val arguments: Iterable[Cell[T]],
+    val handler: Iterable[State[T]] => Async ?=> Outcome[V]
+) extends DependencyHandler[V, Iterable[Cell[T]], Iterable[State[T]]]:
   override def run()(using Async): Outcome[V] = handler(arguments.map(cell => cell.state))
 
 private[rasync] class TupleDependencyHandler[
@@ -32,8 +32,8 @@ private[rasync] class TupleDependencyHandler[
     val args = fromIArray(array).asInstanceOf[Params]
     handler(args)
 
-private[rasync] class SingletonDependencyHandler[V](
-    val arguments: Cell[V],
-    val handler: State[V] => Async ?=> Outcome[V]
-) extends DependencyHandler[V, Cell[V], State[V]]:
+private[rasync] class SingletonDependencyHandler[T, V](
+    val arguments: Cell[T],
+    val handler: State[T] => Async ?=> Outcome[V]
+) extends DependencyHandler[V, Cell[T], State[T]]:
   override def run()(using Async): Outcome[V] = handler(arguments.state)

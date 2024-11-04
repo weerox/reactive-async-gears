@@ -32,9 +32,7 @@ object TreeBench extends Bench.LocalTime:
 
   performance of "Tree" in {
     using(tree) in { (depth, degree) =>
-      def build(height: Int, degree: Int)(using
-          Handler[Set[Marker]]
-      ): Cell[Set[Marker]] =
+      def build(height: Int, degree: Int)(using Handler): Cell[Set[Marker]] =
         if height == 0 then
           ReactiveAsync.cell(() => Complete(Some(Set(Marker()))))
         else
