@@ -21,8 +21,8 @@ class ReactiveAsyncTests extends munit.FunSuite:
         Complete(Some(72))
       val cell2 = ReactiveAsync.cell
 
-      cell2.when(List(cell1))(cells =>
-        cells.head match
+      cell2.when(cell1)(cell =>
+        cell match
           case Completed(value) => Complete(Some(value))
           case _                => Nothing
       )
@@ -38,13 +38,13 @@ class ReactiveAsyncTests extends munit.FunSuite:
       val cell2 = ReactiveAsync.cell
       val cell3 = ReactiveAsync.cell
 
-      cell2.when(List(cell1))(cells =>
-        cells.head match
+      cell2.when(cell1)(cell =>
+        cell match
           case Completed(value) => Complete(Some(value))
           case _                => Nothing
       )
-      cell3.when(List(cell2))(cells =>
-        cells.head match
+      cell3.when(cell2)(cell =>
+        cell match
           case Completed(value) => Complete(Some(value))
           case _                => Nothing
       )
