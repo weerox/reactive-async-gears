@@ -2,15 +2,10 @@ package rasync
 package bench
 
 import cell.Cell
+import lattice.given
 
 import org.scalameter.*
 import org.scalameter.picklers.Implicits.*
-
-class SetLattice[T] extends Lattice[Set[T]]:
-  override val bottom: Set[T] = Set()
-
-  override def join(x: Set[T], y: Set[T]): Set[T]  = x union y
-  override def lteq(x: Set[T], y: Set[T]): Boolean = x subsetOf y
 
 class Marker
 
@@ -58,7 +53,6 @@ object TreeBench extends Bench.LocalTime:
           }
           sum
 
-      given Lattice[Set[Marker]] = SetLattice()
       val result = ReactiveAsync.handler:
         build(depth, degree)
 

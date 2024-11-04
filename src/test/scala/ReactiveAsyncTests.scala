@@ -1,14 +1,10 @@
 package rasync
 package test
 
-class ReactiveAsyncTests extends munit.FunSuite:
-  class NumberLattice extends Lattice[Int]:
-    override val bottom: Int                   = 0
-    override def join(x: Int, y: Int): Int     = x + y
-    override def lteq(x: Int, y: Int): Boolean = x <= y
+import lattice.given
 
+class ReactiveAsyncTests extends munit.FunSuite:
   test("cell initialization") {
-    given Lattice[Int] = NumberLattice()
     val (cell1, cell2) = ReactiveAsync.handler:
       val cell1 = ReactiveAsync.cell: () =>
         Update(42)
@@ -20,7 +16,6 @@ class ReactiveAsyncTests extends munit.FunSuite:
   }
 
   test("one length path cell dependency") {
-    given Lattice[Int] = NumberLattice()
     val cell = ReactiveAsync.handler:
       val cell1 = ReactiveAsync.cell: () =>
         Complete(Some(72))
@@ -37,7 +32,6 @@ class ReactiveAsyncTests extends munit.FunSuite:
   }
 
   test("two length path cell dependency") {
-    given Lattice[Int] = NumberLattice()
     val cell = ReactiveAsync.handler:
       val cell1 = ReactiveAsync.cell: () =>
         Complete(Some(72))
