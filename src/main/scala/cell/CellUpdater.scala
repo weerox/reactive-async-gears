@@ -22,18 +22,31 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
 
   override def when(dependencies: Iterable[Cell[V]])(
       body: Iterable[State[V]] => Async ?=> Outcome[V]
-  ): Unit = handler.dependencies += this -> IterableDependencyHandler(dependencies, body)
+  ): Unit =
+    handler.dependencies += this -> IterableDependencyHandler(dependencies, body)
+    dependencies.foreach(cell =>
+      handler.dependents += cell -> this
+    )
 
   override def when(dependencies: Cell[V])(
       body: State[V] => Async ?=> Outcome[V]
-  ): Unit = handler.dependencies += this -> SingletonDependencyHandler(dependencies, body)
+  ): Unit =
+    handler.dependencies += this       -> SingletonDependencyHandler(dependencies, body)
+    handler.dependents += dependencies -> this
 
   override def when[
       Args <: Tuple: Container[Cell],
       Params <: ContainerMap[Args, Cell, State]
   ](dependencies: Args)(
       body: Params => Async ?=> Outcome[V]
-  ): Unit = handler.dependencies += this -> TupleDependencyHandler(dependencies, body)
+  ): Unit =
+    handler.dependencies += this -> TupleDependencyHandler(dependencies, body)
+    // NOTE I'm not quite sure that a cell in a tuple will always be of type `Cell[V]`,
+    // but if it where anything else it would be wrong, since the `Handler` only accepts
+    // cells with values of type `V`.
+    dependencies.productIterator.asInstanceOf[Iterator[Cell[V]]].foreach(cell =>
+      handler.dependents += cell -> this
+    )
 
   def update(value: V): Unit = _state match
     case Intermediate(current) =>
