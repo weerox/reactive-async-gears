@@ -5,7 +5,7 @@ import gears.async.{ Async, Future }
 
 import scala.collection.mutable.{ ListBuffer, Map, MultiDict }
 
-import cell.CellUpdater
+import cell.{ Cell, CellUpdater }
 import handler.DependencyHandler
 import handler.InitializationHandler
 
@@ -48,7 +48,32 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
 
   def run(): Unit =
     while dependencies.size != 0 do
-      val (dependents, handlers) = dependencies.toSeq.unzip
+      /*
+        If a handler A for a dependent D is scheduled to run, then there is
+        (almost) no point in running a handler B for dependent E which contain
+        D as a dependency, since after handler A has completed, we might have a
+        new value for D, which would require handler B to run again.
+        So we track what dependents we have scheduled handlers for,
+        so that we don't run handlers unneccesarily.
+       */
+
+      import scala.collection.mutable.Set
+      val set: Set[Cell[?]] = Set()
+
+      val (dependents, handlers) = dependencies.filter((dependent, handler) =>
+        if
+          /* none of the dependencies in the handler is in the set */
+          handler.dependencies.forall(dependency => !set.contains(dependency))
+        then
+          /* add `dependent` to the set and schedule handler to run */
+          set.add(dependent)
+          true
+        else
+          /* at least one of dependencies are in the set, so we won't schedule the handler */
+          false
+      ).toSeq.unzip
+
+      println(s"${dependencies.size}, ${handlers.size}")
 
       val results = Async.blocking:
         handlers.map(handler =>
