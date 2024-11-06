@@ -32,18 +32,23 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     val results = Async.blocking:
       handlers.map { handler =>
         Future:
-          handler.run()
+          try
+            Right(handler.run())
+          catch
+            case e => Left(e)
       }.awaitAll
     cells
       .zip(results)
       .map { (cell, result) =>
         result match
-          case Update(value)  => cell.update(value)
-          case Complete(None) => cell.complete()
-          case Complete(Some(value)) =>
-            cell.update(value)
-            cell.complete()
-          case Nothing =>
+          case Left(e) => cell.fail(e)
+          case Right(outcome) => outcome match
+              case Update(value)  => cell.update(value)
+              case Complete(None) => cell.complete()
+              case Complete(Some(value)) =>
+                cell.update(value)
+                cell.complete()
+              case Nothing =>
       }
 
   def run(): Unit =
@@ -53,15 +58,20 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       val results = Async.blocking:
         handlers.map(handler =>
           Future:
-            handler.run()
+            try
+              Right(handler.run())
+            catch
+              case e => Left(e)
         ).awaitAll
 
       dependents.zip(results).map { (dependent, result) =>
         result match
-          case Update(value)  => dependent.update(value)
-          case Complete(None) => dependent.complete()
-          case Complete(Some(value)) =>
-            dependent.update(value)
-            dependent.complete()
-          case Nothing =>
+          case Left(e) => dependent.fail(e)
+          case Right(outcome) => outcome match
+              case Update(value)  => dependent.update(value)
+              case Complete(None) => dependent.complete()
+              case Complete(Some(value)) =>
+                dependent.update(value)
+                dependent.complete()
+              case Nothing =>
       }

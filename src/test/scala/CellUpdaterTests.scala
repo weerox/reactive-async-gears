@@ -31,3 +31,39 @@ class CellUpdaterTests extends munit.FunSuite:
     for i <- shuffle(1 to 10) do cell.update(i)
     assertEquals(cell.get, 10)
   }
+
+  test("cell failure updates state") {
+    val cell = CellUpdater(using handler)
+    cell.fail(Exception())
+    cell.state match
+      case Failed(_) =>
+      case _         => fail("state was not Failed", clues(cell.state))
+  }
+
+  test("get throws when failed") {
+    val cell = CellUpdater(using handler)
+    cell.fail(Exception())
+    intercept[Exception] {
+      cell.get
+    }
+  }
+
+  test("completed cell will not become failed") {
+    val cell = CellUpdater(using handler)
+    cell.complete()
+    cell.fail(Exception())
+
+    cell.state match
+      case Failed(_) => fail("state became Failed", clues(cell.state))
+      case _         =>
+  }
+
+  test("keep first failed state") {
+    val cell = CellUpdater(using handler)
+    cell.fail(Exception("foo"))
+    cell.fail(Exception("bar"))
+
+    cell.state match
+      case Failed(e) => assertEquals(e.getMessage(), "foo")
+      case _         => fail("state was not Failed", clues(cell.state))
+  }

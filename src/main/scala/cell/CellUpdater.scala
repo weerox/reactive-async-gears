@@ -45,3 +45,10 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
       _state = Completed(value)
       handler.dependencies.removeKey(this)
     case _ =>
+
+  def fail(exception: Throwable): Unit = _state match
+    case Intermediate(_) =>
+      _state = Failed(exception)
+      handler.dependencies.removeKey(this)
+    // If the cell is already completed or failed, then we won't fail it.
+    case Completed(_) | Failed(_) =>

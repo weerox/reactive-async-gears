@@ -52,3 +52,36 @@ class ReactiveAsyncTests extends munit.FunSuite:
       cell3
     assertEquals(cell.get, 72)
   }
+
+  test("exception in initializer results in a failed state") {
+    val cell = ReactiveAsync.handler:
+      val cell = ReactiveAsync.cell[Int](() => throw Exception())
+      cell
+
+    cell.state match
+      case Failed(_) =>
+      case _         => fail("state was not Failed", clues(cell.state))
+  }
+
+  test("exception in dependency handler results in a failed state") {
+    val cell = ReactiveAsync.handler:
+      val cell1 = ReactiveAsync.cell[Int]
+      val cell2 = ReactiveAsync.cell[Int]
+
+      cell2.when(cell1)(cell => throw Exception())
+      cell2
+
+    cell.state match
+      case Failed(_) =>
+      case _         => fail("state was not Failed", clues(cell.state))
+  }
+
+  test("get throws when cell is in failed state") {
+    val cell = ReactiveAsync.handler:
+      val cell = ReactiveAsync.cell[Int](() => throw Exception())
+      cell
+
+    intercept[Exception] {
+      cell.get
+    }
+  }
