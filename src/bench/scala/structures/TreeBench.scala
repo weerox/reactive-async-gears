@@ -31,7 +31,7 @@ object TreeBench extends Bench.LocalTime:
           Handler[Set[Marker]]
       ): Cell[Set[Marker]] =
         if height == 0 then
-          ReactiveAsync.cell(() => Complete(Some(Set(Marker()))))
+          ReactiveAsync.completed(Set(Marker()))
         else
           val cells = Seq.fill(degree)(build(height - 1, degree))
           val sum   = ReactiveAsync.cell[Set[Marker]]

@@ -6,7 +6,8 @@ import gears.async.Async
 import cell.Cell
 import util.{ Container, ContainerMap }
 
-private[rasync] trait DependencyHandler[V, Args, Params] extends Handler[Params, Outcome[V]]:
+private[rasync] trait DependencyHandler[V, Args, Params] extends Handler[Outcome[V]]:
+  val handler: Params => Async ?=> Outcome[V]
   val arguments: Args
 
 private[rasync] class IterableDependencyHandler[V](
