@@ -76,6 +76,17 @@ class ReactiveAsyncTests extends munit.FunSuite:
       case _         => fail("state was not Failed", clues(cell.state))
   }
 
+  test("sleep in initializer") {
+    import gears.async.AsyncOperations
+    import gears.async.default.given AsyncOperations
+    val cell = ReactiveAsync.handler:
+      ReactiveAsync.cell: () =>
+        AsyncOperations.sleep(100)
+        Complete(Some(42))
+
+    assertEquals(cell.get, 42)
+  }
+
   test("get throws when cell is in failed state") {
     val cell = ReactiveAsync.handler:
       val cell = ReactiveAsync.cell[Int](() => throw Exception())
