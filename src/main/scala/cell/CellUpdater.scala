@@ -16,9 +16,17 @@ private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
     case Value(value)      => value
     case Failed(exception) => throw exception
 
-  override def isComplete(): Boolean = _state match
+  override def isCompleted(): Boolean = _state match
     case Completed(_) => true
     case _            => false
+
+  override def isFailed(): Boolean = _state match
+    case Failed(_) => true
+    case _         => false
+
+  override def hasValue(): Boolean = _state match
+    case Value(_) => true
+    case _        => false
 
   override def when(dependencies: Iterable[Cell[V]])(
       body: Iterable[State[V]] => Async ?=> Outcome[V]

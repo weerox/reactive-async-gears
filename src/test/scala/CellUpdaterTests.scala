@@ -67,3 +67,22 @@ class CellUpdaterTests extends munit.FunSuite:
       case Failed(e) => assertEquals(e.getMessage(), "foo")
       case _         => fail("state was not Failed", clues(cell.state))
   }
+
+  test("has value") {
+    val cell = CellUpdater(using handler)
+    assertEquals(cell.hasValue(), true)
+    cell.complete()
+    assertEquals(cell.hasValue(), true)
+  }
+
+  test("is completed") {
+    val cell = CellUpdater(using handler)
+    cell.complete()
+    assertEquals(cell.isCompleted(), true)
+  }
+
+  test("is failed") {
+    val cell = CellUpdater(using handler)
+    cell.fail(Exception())
+    assertEquals(cell.isFailed(), true)
+  }
