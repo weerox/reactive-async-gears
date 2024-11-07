@@ -8,7 +8,7 @@ import handler.SingletonDependencyHandler
 import handler.IterableDependencyHandler
 import handler.TupleDependencyHandler
 
-private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V]:
+private[rasync] class CellUpdater[V](using handler: Handler[V]) extends Cell[V], When[V]:
   private var _state: State[V] = Intermediate(handler.lattice.bottom)
   override def state: State[V] = _state
 
