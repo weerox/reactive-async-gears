@@ -3,10 +3,9 @@ package rasync
 import gears.async.default.given
 import gears.async.{ Async, Future }
 
-import scala.collection.mutable.{ ListBuffer, Map, MultiDict }
+import scala.collection.mutable.Map
 
 import cell.CellUpdater
-import handler.DependencyHandler
 import handler.InitializationHandler
 
 /*
@@ -15,17 +14,12 @@ import handler.InitializationHandler
  but I'm not sure that is safe to do/the type system won't like it.
  */
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
-  val cells: ListBuffer[CellUpdater[V]] = ListBuffer()
+  var cells: List[CellUpdater[V]] = List()
 
   val initializers: Map[
     CellUpdater[V],
     InitializationHandler[V]
   ] = Map()
-
-  val dependencies: MultiDict[
-    CellUpdater[V],
-    DependencyHandler[V, ?, ?]
-  ] = MultiDict()
 
   def initialize(): Unit =
     val (cells, handlers) = initializers.toSeq.unzip
@@ -52,8 +46,12 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       }
 
   def run(): Unit =
-    while dependencies.size != 0 do
-      val (dependents, handlers) = dependencies.toSeq.unzip
+    def dependencies = cells.flatMap(cell => cell.dependencies.map(dep => (cell, dep)))
+
+    while
+      !dependencies.isEmpty
+    do
+      val (dependents, handlers) = dependencies.unzip
 
       val results = Async.blocking:
         handlers.map(handler =>
