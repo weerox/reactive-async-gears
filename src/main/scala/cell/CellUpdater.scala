@@ -10,9 +10,13 @@ import handler.SingletonDependencyHandler
 import handler.IterableDependencyHandler
 import handler.TupleDependencyHandler
 
-private[rasync] class CellUpdater[V](init: InitializationHandler[V])(using handler: Handler[V])
+// A `CellUpdater` is created using the methods defined in its companion object.
+private[rasync] class CellUpdater[V] private (using handler: Handler[V])
     extends Cell[V], When[V]:
-  private var _state: State[V] = Uninitialized(init)
+
+  // The state is initialized to `null`, but is set to `Uninitialized`
+  // by all methods in the companion object.
+  private var _state: State[V] = null
   override def state: State[V] = _state
 
   override def get: V = _state match
@@ -51,18 +55,18 @@ private[rasync] class CellUpdater[V](init: InitializationHandler[V])(using handl
 
   override def when(dependencies: Iterable[Cell[V]])(
       body: Iterable[State[V]] => Async ?=> Outcome[V]
-  ): Unit = addDependency(IterableDependencyHandler(dependencies, body))
+  ): Unit = addDependency(IterableDependencyHandler(this, dependencies, body))
 
   override def when(dependencies: Cell[V])(
       body: State[V] => Async ?=> Outcome[V]
-  ): Unit = addDependency(SingletonDependencyHandler(dependencies, body))
+  ): Unit = addDependency(SingletonDependencyHandler(this, dependencies, body))
 
   override def when[
       Args <: Tuple: Container[Cell],
       Params <: ContainerMap[Args, Cell, State]
   ](dependencies: Args)(
       body: Params => Async ?=> Outcome[V]
-  ): Unit = addDependency(TupleDependencyHandler(dependencies, body))
+  ): Unit = addDependency(TupleDependencyHandler(this, dependencies, body))
 
   def update(value: V): Unit = _state match
     case state: Uninitialized[V] =>
@@ -83,3 +87,14 @@ private[rasync] class CellUpdater[V](init: InitializationHandler[V])(using handl
       _state = Failed(exception)
     // If the cell is already completed or failed, then we won't fail it.
     case Completed(_) | Failed(_) =>
+
+object CellUpdater:
+  def initial[V](initial: Outcome[V])(using Handler[V]): CellUpdater[V] =
+    val cell = new CellUpdater
+    cell._state = Uninitialized(InitializationHandler(cell, initial))
+    cell
+
+  def initializer[V](initializer: Async ?=> Outcome[V])(using Handler[V]): CellUpdater[V] =
+    val cell = new CellUpdater
+    cell._state = Uninitialized(InitializationHandler(cell, initializer))
+    cell

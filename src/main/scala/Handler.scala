@@ -4,7 +4,6 @@ import gears.async.default.given
 import gears.async.{ Async, Future }
 
 import cell.CellUpdater
-import handler.InitializationHandler
 
 /*
  A handler is restricted to hold cells with value V.
@@ -15,61 +14,58 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
   var cells: List[CellUpdater[V]] = List()
 
   def initialize(): Unit =
-    val (cells: List[CellUpdater[V]], initializers) =
-      this.cells.map(cell =>
-        cell.initializer match
-          case Some(init) => List((cell, init))
-          case None       => List()
-      ).flatten.unzip
-
-    val results = Async.blocking:
-      initializers.toSeq.map { handler =>
-        Future:
-          try
-            Right(handler.run())
-          catch
-            case e => Left(e)
-      }.awaitAll
-
-    cells
-      .zip(results)
-      .map { (cell, result) =>
-        result match
-          case Left(e) => cell.fail(e)
-          case Right(outcome) => outcome match
-              case Update(value)  => cell.update(value)
-              case Complete(None) => cell.complete()
-              case Complete(Some(value)) =>
-                cell.update(value)
-                cell.complete()
-              case Nothing =>
-      }
+    Async.blocking:
+      cells
+        .map(cell => cell.initializer)
+        .flatten
+        .map(handler =>
+          Future:
+            val result =
+              try
+                Right(handler.run())
+              catch
+                case e => Left(e)
+            (handler.cell, result)
+        )
+        .awaitAll
+        .map((cell, result) =>
+          result match
+            case Left(e) => cell.fail(e)
+            case Right(outcome) => outcome match
+                case Update(value)  => cell.update(value)
+                case Complete(None) => cell.complete()
+                case Complete(Some(value)) =>
+                  cell.update(value)
+                  cell.complete()
+                case Nothing =>
+        )
 
   def run(): Unit =
-    def dependencies = cells.flatMap(cell => cell.dependencies.map(dep => (cell, dep)))
+    def dependencies = cells.flatMap(cell => cell.dependencies)
 
     while
       !dependencies.isEmpty
     do
-      val (dependents, handlers) = dependencies.unzip
-
-      val results = Async.blocking:
-        handlers.map(handler =>
-          Future:
-            try
-              Right(handler.run())
-            catch
-              case e => Left(e)
-        ).awaitAll
-
-      dependents.zip(results).map { (dependent, result) =>
-        result match
-          case Left(e) => dependent.fail(e)
-          case Right(outcome) => outcome match
-              case Update(value)  => dependent.update(value)
-              case Complete(None) => dependent.complete()
-              case Complete(Some(value)) =>
-                dependent.update(value)
-                dependent.complete()
-              case Nothing =>
-      }
+      Async.blocking:
+        dependencies
+          .map(handler =>
+            Future:
+              val result =
+                try
+                  Right(handler.run())
+                catch
+                  case e => Left(e)
+              (handler.dependent, result)
+          )
+          .awaitAll
+          .map((dependent, result) =>
+            result match
+              case Left(e) => dependent.fail(e)
+              case Right(outcome) => outcome match
+                  case Update(value)  => dependent.update(value)
+                  case Complete(None) => dependent.complete()
+                  case Complete(Some(value)) =>
+                    dependent.update(value)
+                    dependent.complete()
+                  case Nothing =>
+          )

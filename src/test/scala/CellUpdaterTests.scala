@@ -2,31 +2,28 @@ package rasync
 package test
 
 import cell.CellUpdater
-import handler.InitializationHandler
 import lattice.given
 
 class CellUpdaterTests extends munit.FunSuite:
 
-  object DummyInitializer extends InitializationHandler[Int](handler = Nothing)
-
   val handler = Handler[Int](summon[Lattice[Int]])
 
   test("initially uninitialized") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.state match
       case Uninitialized() =>
       case _               => fail("state was not Uninitialized", clues(cell.state))
   }
 
   test("uninitialized cell value") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     intercept[Exception] {
       cell.get
     }
   }
 
   test("updating uninitialized cell makes it intermediate") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.update(42)
     cell.state match
       case Intermediate(_) =>
@@ -34,20 +31,20 @@ class CellUpdaterTests extends munit.FunSuite:
   }
 
   test("completing uninitialized cell throws exception") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     intercept[Exception] {
       cell.complete()
     }
   }
 
   test("single cell update") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.update(1)
     assertEquals(cell.get, 1)
   }
 
   test("two cell updates") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.update(1)
     cell.update(2)
     assertEquals(cell.get, 2)
@@ -55,13 +52,13 @@ class CellUpdaterTests extends munit.FunSuite:
 
   test("multiple cell updates") {
     import scala.util.Random.shuffle
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     for i <- shuffle(1 to 10) do cell.update(i)
     assertEquals(cell.get, 10)
   }
 
   test("cell failure updates state") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.fail(Exception())
     cell.state match
       case Failed(_) =>
@@ -69,7 +66,7 @@ class CellUpdaterTests extends munit.FunSuite:
   }
 
   test("get throws when failed") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.fail(Exception())
     intercept[Exception] {
       cell.get
@@ -77,7 +74,7 @@ class CellUpdaterTests extends munit.FunSuite:
   }
 
   test("completed cell will not become failed") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.update(42)
     cell.complete()
     cell.fail(Exception())
@@ -88,7 +85,7 @@ class CellUpdaterTests extends munit.FunSuite:
   }
 
   test("keep first failed state") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.fail(Exception("foo"))
     cell.fail(Exception("bar"))
 
@@ -98,7 +95,7 @@ class CellUpdaterTests extends munit.FunSuite:
   }
 
   test("has value") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.update(42)
     assertEquals(cell.hasValue(), true)
     cell.complete()
@@ -106,14 +103,14 @@ class CellUpdaterTests extends munit.FunSuite:
   }
 
   test("is completed") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.update(42)
     cell.complete()
     assertEquals(cell.isCompleted(), true)
   }
 
   test("is failed") {
-    val cell = CellUpdater(DummyInitializer)(using handler)
+    val cell = CellUpdater.initial(Nothing)(using handler)
     cell.fail(Exception())
     assertEquals(cell.isFailed(), true)
   }
