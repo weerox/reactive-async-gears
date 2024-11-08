@@ -3,8 +3,6 @@ package rasync
 import gears.async.default.given
 import gears.async.{ Async, Future }
 
-import scala.collection.mutable.Map
-
 import cell.CellUpdater
 import handler.InitializationHandler
 
@@ -16,21 +14,23 @@ import handler.InitializationHandler
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
   var cells: List[CellUpdater[V]] = List()
 
-  val initializers: Map[
-    CellUpdater[V],
-    InitializationHandler[V]
-  ] = Map()
-
   def initialize(): Unit =
-    val (cells, handlers) = initializers.toSeq.unzip
+    val (cells: List[CellUpdater[V]], initializers) =
+      this.cells.map(cell =>
+        cell.initializer match
+          case Some(init) => List((cell, init))
+          case None       => List()
+      ).flatten.unzip
+
     val results = Async.blocking:
-      handlers.map { handler =>
+      initializers.toSeq.map { handler =>
         Future:
           try
             Right(handler.run())
           catch
             case e => Left(e)
       }.awaitAll
+
     cells
       .zip(results)
       .map { (cell, result) =>

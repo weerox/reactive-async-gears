@@ -19,29 +19,26 @@ object ReactiveAsync:
 
   /** Creates a cell with an initial value given by the lattice. */
   def cell[V](using handler: Handler[V]): Cell[V] & When[V] =
-    val cell = CellUpdater[V]()
+    val cell = CellUpdater[V](InitializationHandler(Update(handler.lattice.bottom)))
     handler.cells = cell +: handler.cells
     cell
 
   /** Creates a cell that completes with the given value. */
   def completed[V](value: V)(using handler: Handler[V]): Cell[V] & When[V] =
-    val cell = CellUpdater[V]()
+    val cell = CellUpdater[V](InitializationHandler(Complete(Some(value))))
     handler.cells = cell +: handler.cells
-    handler.initializers += cell -> InitializationHandler(Complete(Some(value)))
     cell
 
   /** Creates a cell with an inital value given by the outcome. */
   def initial[V](initial: Outcome[V])(using handler: Handler[V]): Cell[V] & When[V] =
-    val cell = CellUpdater[V]()
+    val cell = CellUpdater[V](InitializationHandler(initial))
     handler.cells = cell +: handler.cells
-    handler.initializers += cell -> InitializationHandler(initial)
     cell
 
   /** Creates a cell with an inital value given by the supplied initializer. */
   def initialize[V](initializer: Async ?=> Outcome[V])(using
       handler: Handler[V]
   ): Cell[V] & When[V] =
-    val cell = CellUpdater[V]()
+    val cell = CellUpdater[V](InitializationHandler(initializer))
     handler.cells = cell +: handler.cells
-    handler.initializers += cell -> InitializationHandler(initializer)
     cell
