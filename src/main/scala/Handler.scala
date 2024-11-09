@@ -32,9 +32,9 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
           result match
             case Left(e) => cell.fail(e)
             case Right(outcome) => outcome match
-                case Update(value)  => cell.update(value)
-                case Complete(None) => cell.complete()
-                case Complete(Some(value)) =>
+                case Update(value) => cell.update(value)
+                case Complete      => cell.complete()
+                case Complete(value) =>
                   cell.update(value)
                   cell.complete()
                 case Nothing =>
@@ -62,9 +62,9 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
             result match
               case Left(e) => dependent.fail(e)
               case Right(outcome) => outcome match
-                  case Update(value)  => dependent.update(value)
-                  case Complete(None) => dependent.complete()
-                  case Complete(Some(value)) =>
+                  case Update(value) => dependent.update(value)
+                  case Complete      => dependent.complete()
+                  case Complete(value) =>
                     dependent.update(value)
                     dependent.complete()
                   case Nothing =>

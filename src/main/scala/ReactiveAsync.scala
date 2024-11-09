@@ -24,7 +24,7 @@ object ReactiveAsync:
 
   /** Creates a cell that completes with the given value. */
   def completed[V](value: V)(using handler: Handler[V]): Cell[V] & When[V] =
-    val cell: CellUpdater[V] = CellUpdater.initial(Complete(Some(value)))
+    val cell: CellUpdater[V] = CellUpdater.initial(Complete(value))
     handler.cells = cell +: handler.cells
     cell
 

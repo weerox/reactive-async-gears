@@ -48,7 +48,7 @@ object TreeBench extends Bench.LocalTime:
                     case Completed(x) => acc union x
                     case _            => acc
                 }
-              Complete(Some(set))
+              Complete(set)
             else Nothing
           }
           sum

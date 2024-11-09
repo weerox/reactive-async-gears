@@ -15,7 +15,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
       ReactiveAsync.initialize:
         val x = 42
         val y = 54
-        Complete(Some(x + y))
+        Complete(x + y)
     assertEquals(cell.get, 96)
   }
 
@@ -27,7 +27,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
 
   test("create cell with initial value given outcome") {
     val cell = ReactiveAsync.handler:
-      ReactiveAsync.initial(Complete(Some(42)))
+      ReactiveAsync.initial(Complete(42))
     assertEquals(cell.get, 42)
   }
 
@@ -38,7 +38,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
 
       cell2.when(cell1)(cell =>
         cell match
-          case Completed(value) => Complete(Some(value))
+          case Completed(value) => Complete(value)
           case _                => Nothing
       )
 
@@ -54,12 +54,12 @@ class ReactiveAsyncTests extends munit.FunSuite:
 
       cell2.when(cell1)(cell =>
         cell match
-          case Completed(value) => Complete(Some(value))
+          case Completed(value) => Complete(value)
           case _                => Nothing
       )
       cell3.when(cell2)(cell =>
         cell match
-          case Completed(value) => Complete(Some(value))
+          case Completed(value) => Complete(value)
           case _                => Nothing
       )
 
@@ -108,7 +108,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
     val cell = ReactiveAsync.handler:
       ReactiveAsync.initialize:
         AsyncOperations.sleep(100)
-        Complete(Some(42))
+        Complete(42)
 
     assertEquals(cell.get, 42)
   }

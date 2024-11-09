@@ -12,6 +12,6 @@ class DependencyTests extends munit.FunSuite:
 
       cell.when(cells)(list =>
         assertEquals(cells.size, list.size)
-        Complete(Some(0))
+        Complete(0)
       )
   }
