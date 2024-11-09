@@ -89,12 +89,14 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
     case Completed(_) | Failed(_) =>
 
 object CellUpdater:
-  def initial[V](initial: Outcome[V])(using Handler[V]): CellUpdater[V] =
+  def initial[V](initial: Update[V] | Complete[V])(using Handler[V]): CellUpdater[V] =
     val cell = new CellUpdater
     cell._state = Uninitialized(InitializationHandler(cell, initial))
     cell
 
-  def initializer[V](initializer: Async ?=> Outcome[V])(using Handler[V]): CellUpdater[V] =
+  def initializer[V](initializer: Async ?=> Update[V] | Complete[V])(using
+      Handler[V]
+  ): CellUpdater[V] =
     val cell = new CellUpdater
     cell._state = Uninitialized(InitializationHandler(cell, initializer))
     cell

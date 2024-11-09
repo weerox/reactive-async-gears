@@ -33,11 +33,9 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
             case Left(e) => cell.fail(e)
             case Right(outcome) => outcome match
                 case Update(value) => cell.update(value)
-                case Complete      => cell.complete()
                 case Complete(value) =>
                   cell.update(value)
                   cell.complete()
-                case Nothing =>
         )
 
   def run(): Unit =

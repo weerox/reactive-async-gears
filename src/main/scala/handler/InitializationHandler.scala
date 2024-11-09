@@ -7,6 +7,6 @@ import cell.CellUpdater
 
 private[rasync] class InitializationHandler[V](
     val cell: CellUpdater[V],
-    val handler: Async ?=> Outcome[V]
-) extends Handler[Outcome[V]]:
-  def run()(using Async): Outcome[V] = handler
+    val handler: Async ?=> Update[V] | Complete[V]
+) extends Handler[Update[V] | Complete[V]]:
+  def run()(using Async): Update[V] | Complete[V] = handler

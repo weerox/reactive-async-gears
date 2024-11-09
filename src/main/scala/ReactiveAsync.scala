@@ -29,13 +29,13 @@ object ReactiveAsync:
     cell
 
   /** Creates a cell with an inital value given by the outcome. */
-  def initial[V](initial: Outcome[V])(using handler: Handler[V]): Cell[V] & When[V] =
+  def initial[V](initial: Update[V] | Complete[V])(using handler: Handler[V]): Cell[V] & When[V] =
     val cell: CellUpdater[V] = CellUpdater.initial(initial)
     handler.cells = cell +: handler.cells
     cell
 
   /** Creates a cell with an inital value given by the supplied initializer. */
-  def initialize[V](initializer: Async ?=> Outcome[V])(using
+  def initialize[V](initializer: Async ?=> Update[V] | Complete[V])(using
       handler: Handler[V]
   ): Cell[V] & When[V] =
     val cell: CellUpdater[V] = CellUpdater.initializer(initializer)
