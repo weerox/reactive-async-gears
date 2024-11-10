@@ -1,8 +1,8 @@
-package rasync
-package bench
-
-import cell.Cell
-import lattice.given
+import rasync.{ Handler, ReactiveAsync }
+import rasync.{ Completed, Value }
+import rasync.{ Complete, Nothing, Update }
+import rasync.cell.Cell
+import rasync.lattice.given
 
 import org.scalameter.*
 import org.scalameter.picklers.Implicits.*
@@ -10,21 +10,19 @@ import org.scalameter.picklers.Implicits.*
 class Marker
 
 object TreeBench extends Bench.LocalTime:
-  val depth  = Gen.single("depth")(14)
+  val depth  = Gen.single("depth")(16)
   val degree = Gen.single("degree")(2)
   val tree   = depth.cross(degree)
 
   /*
-  2^16 leaves:
-  [c0fa29] Using numbers with lattice sum: 238 ms
-  [c0fa29] Using empty class and set lattice with union: 390 ms
-  [c0fa29] Using empty class and set lattice with union and only fold when all complete: 370 ms
-
-  The previous RA library, with 2^13 leaves: 413 ms
-  The previous RA library, with 2^14 leaves: 1794 ms
-  [c0fa29] This implementation, with 2^14 leaves: 76 ms
+  [rasync2] 2^13 -> 413 ms
+  [rasync2] 2^14 -> 1794 ms
+  [32a8d4]  2^14 -> 76 ms
+  [32a8d4]  2^16 -> 399 ms
+  [2100d9]  2^16 -> 442 ms
    */
 
+  /** Constructs a tree of given `depth` and `degree`. */
   performance of "Tree" in {
     using(tree) in { (depth, degree) =>
       def build(height: Int, degree: Int)(using
@@ -57,5 +55,35 @@ object TreeBench extends Bench.LocalTime:
         build(depth, degree)
 
       assert(result.get.size == math.pow(degree, depth))
+    }
+  }
+
+  /*
+  [2100d9] 2^16 -> 219 ms
+   */
+
+  /** Constructs a tree of given `depth` and a degree of 2. */
+  performance of "Binary Tree" in {
+    using(depth) in { depth =>
+      def build(height: Int)(using Handler[Int]): Cell[Int] =
+        if height == 0 then ReactiveAsync.cell
+        else
+          val left  = build(height - 1)
+          val right = build(height - 1)
+          val sum   = ReactiveAsync.cell
+          sum.when(left)(left =>
+            left match
+              case Value(value) => Update(value)
+              case _            => Nothing
+          )
+          sum.when(right)(right =>
+            right match
+              case Value(value) => Update(value)
+              case _            => Nothing
+          )
+          sum
+
+      ReactiveAsync.handler:
+        build(depth)
     }
   }

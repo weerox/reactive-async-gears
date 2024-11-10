@@ -24,9 +24,10 @@ lazy val root = project
       "org.scalameter.ScalaMeterFramework"
     ),
     Benchmark / parallelExecution := false,
+    Benchmark / fork              := true,
+    Benchmark / logBuffered       := false,
     Benchmark / javaOptions ++= Seq(
       "-Xmx24G",
       "-Xms1G"
-    ),
-    Benchmark / fork := true
+    )
   )
