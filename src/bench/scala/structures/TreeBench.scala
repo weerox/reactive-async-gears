@@ -15,8 +15,10 @@ object TreeBench extends Bench.LocalTime:
   val tree   = depth.cross(degree)
 
   /*
-  [rasync2] 2^13 -> 413 ms
-  [rasync2] 2^14 -> 1794 ms
+  [rasync2] 2^13 -> 413 ms (8 threads)
+  [rasync2] 2^14 -> 1794 ms (8 threads)
+  [rasync2] 2^14 -> 38 ms (16 threads)
+  [rasync2] 2^16 -> 20000 ms (16 threads)
   [32a8d4]  2^14 -> 76 ms
   [32a8d4]  2^16 -> 399 ms
   [2100d9]  2^16 -> 442 ms
