@@ -3,7 +3,8 @@ package rasync
 import gears.async.default.given
 import gears.async.{ Async, Future }
 
-import cell.CellUpdater
+import cell.{ Cell, CellUpdater }
+import handler.DependencyHandler
 
 /*
  A handler is restricted to hold cells with value V.
@@ -13,6 +14,11 @@ import cell.CellUpdater
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
   var cells: List[CellUpdater[V]] = List()
 
+  // Cells which have been updated since the handlers where they are a dependency last ran.
+  var updated: Set[Cell[V]] = Set()
+
+  def registerUpdate(cell: Cell[V]): Unit =
+    updated = updated + cell
   def initialize(): Unit =
     Async.blocking:
       cells
@@ -39,13 +45,17 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
         )
 
   def run(): Unit =
-    def dependencies = cells.flatMap(cell => cell.dependencies)
+    var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty
 
     while
-      !dependencies.isEmpty
+      handlers = cells
+        .flatMap(cell => cell.dependencies)
+        .filter(handler => handler.dependencies.toSet.intersect(updated).nonEmpty).toSeq
+      updated = Set.empty
+      handlers.nonEmpty
     do
       Async.blocking:
-        dependencies
+        handlers
           .map(handler =>
             Future:
               val result =

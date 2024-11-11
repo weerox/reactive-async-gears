@@ -71,13 +71,18 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
   def update(value: V): Unit = _state match
     case state: Uninitialized[V] =>
       _state = new Intermediate(value, state.dependencies)
+      handler.registerUpdate(this)
     case state: Intermediate[V] =>
-      _state = new Intermediate(handler.lattice.join(state.value, value), state.dependencies)
+      val next = handler.lattice.join(state.value, value)
+      if state.value != next then
+        _state = new Intermediate(next, state.dependencies)
+        handler.registerUpdate(this)
     case _ =>
 
   def complete(): Unit = _state match
     case Intermediate(value) =>
       _state = Completed(value)
+      handler.registerUpdate(this)
     // NOTE Should this update the state to Failed instead of throwing?
     case Uninitialized() => throw Exception("tried to complete a cell without a value")
     case _               =>
@@ -85,6 +90,10 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
   def fail(exception: Throwable): Unit = _state match
     case Intermediate(_) | Uninitialized() =>
       _state = Failed(exception)
+      // It seems reasonable to register a update here since the state
+      // actually changed. Someone might use the fact that the cell failed in
+      // a dependency handler.
+      handler.registerUpdate(this)
     // If the cell is already completed or failed, then we won't fail it.
     case Completed(_) | Failed(_) =>
 
