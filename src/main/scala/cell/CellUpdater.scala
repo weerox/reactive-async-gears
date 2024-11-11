@@ -71,8 +71,8 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
   def update(value: V): Unit = _state match
     case state: Uninitialized[V] =>
       _state = new Intermediate(value, state.dependencies)
-    case Intermediate(current) =>
-      _state = Intermediate(handler.lattice.join(current, value))
+    case state: Intermediate[V] =>
+      _state = new Intermediate(handler.lattice.join(state.value, value), state.dependencies)
     case _ =>
 
   def complete(): Unit = _state match

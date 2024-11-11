@@ -39,6 +39,27 @@ class CellUpdaterTests extends munit.FunSuite:
     }
   }
 
+  test("updating uninitialized cell keeps dependencies") {
+    val cell  = makeCell()
+    val other = makeCell()
+    cell.when(other)(_ => Nothing)
+    val before = cell.state.asInstanceOf[Uninitialized[Int]]
+    cell.update(42)
+    val after = cell.state.asInstanceOf[Intermediate[Int]]
+    assertEquals(before.dependencies, after.dependencies)
+  }
+
+  test("updating intermediate cell keeps dependencies") {
+    val cell  = makeCell()
+    val other = makeCell()
+    cell.when(other)(_ => Nothing)
+    cell.update(42)
+    val before = cell.state.asInstanceOf[Intermediate[Int]]
+    cell.update(43)
+    val after = cell.state.asInstanceOf[Intermediate[Int]]
+    assertEquals(before.dependencies, after.dependencies)
+  }
+
   test("single cell update") {
     val cell = makeCell()
     cell.update(1)
