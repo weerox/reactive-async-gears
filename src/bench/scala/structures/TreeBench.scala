@@ -22,6 +22,8 @@ object TreeBench extends Bench.LocalTime:
   [32a8d4]  2^14 -> 76 ms
   [32a8d4]  2^16 -> 399 ms
   [2100d9]  2^16 -> 442 ms
+  [d18ecf]  2^16 -> 466 ms
+  [036003]  2^16 -> 485 ms
    */
 
   /** Constructs a tree of given `depth` and `degree`. */
@@ -62,6 +64,8 @@ object TreeBench extends Bench.LocalTime:
 
   /*
   [2100d9] 2^16 -> 219 ms
+  [d18ecf] 2^16 -> 274 ms
+  [036003] 2^16 -> 344 ms
    */
 
   /** Constructs a tree of given `depth` and a degree of 2. */
