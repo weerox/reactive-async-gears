@@ -1,5 +1,7 @@
 package rasync
 
+import scala.collection.immutable.MultiDict
+
 import gears.async.default.given
 import gears.async.{ Async, Future }
 
@@ -14,11 +16,23 @@ import handler.DependencyHandler
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
   var cells: List[CellUpdater[V]] = List()
 
+  // Mapping from a cell to the handlers which has that cell as a dependency.
+  var handlers: MultiDict[Cell[V], DependencyHandler[V, ?, ?]] = MultiDict.empty
+
   // Cells which have been updated since the handlers where they are a dependency last ran.
   var updated: Set[Cell[V]] = Set()
 
   def registerUpdate(cell: Cell[V]): Unit =
     updated = updated + cell
+
+  def registerDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
+    for cell <- handler.dependencies do
+      handlers = handlers + (cell -> handler)
+
+  def deregisterDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
+    for cell <- handler.dependencies do
+      handlers = handlers - (cell -> handler)
+
   def initialize(): Unit =
     Async.blocking:
       cells
@@ -48,9 +62,7 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty
 
     while
-      handlers = cells
-        .flatMap(cell => cell.dependencies)
-        .filter(handler => handler.dependencies.toSet.intersect(updated).nonEmpty).toSeq
+      handlers = updated.flatMap(cell => this.handlers.get(cell)).toSeq
       updated = Set.empty
       handlers.nonEmpty
     do

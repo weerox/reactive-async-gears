@@ -48,9 +48,20 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
   private def addDependency(handler: DependencyHandler[V, ?, ?]): Unit = _state match
     case state: Uninitialized[V] =>
       _state = new Uninitialized(state.initializer, state.dependencies + handler)
+      this.handler.registerDependencyHandler(handler)
     case state: Intermediate[V] =>
       _state = new Intermediate(state.value, state.dependencies + handler)
+      this.handler.registerDependencyHandler(handler)
     // TODO Throw error?
+    case _ =>
+
+  private[rasync] def removeDependency(handler: DependencyHandler[V, ?, ?]): Unit = _state match
+    case state: Uninitialized[V] =>
+      _state = new Uninitialized(state.initializer, state.dependencies - handler)
+      this.handler.deregisterDependencyHandler(handler)
+    case state: Intermediate[V] =>
+      _state = new Intermediate(state.value, state.dependencies - handler)
+      this.handler.deregisterDependencyHandler(handler)
     case _ =>
 
   override def when(dependencies: Iterable[Cell[V]])(
