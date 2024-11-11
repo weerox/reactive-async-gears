@@ -12,7 +12,12 @@ object GraphBench extends Bench.LocalTime:
   val graph = n.cross(p)
 
   /*
-  [2100d9] n = 10000, p = ln / n -> 755 ms
+  This was measured for a version of the benchmark with a bug that removed the dependencies whenever you updated the cell.
+  This means that each dependency handler only ran once. The same graph benchmark ran each handler, on average, 1.5 times.
+  [a59925]  n = 10000, p = ln / n -> 755 ms
+  [rasync2] n = 10000, p = ln / n -> 737 ms (16 threads)
+  [a59925]  n = 20000, p = ln / n -> 2854 ms
+  [rasync2] n = 20000, p = ln / n -> 2842 ms (16 threads)
    */
 
   /** Constructs a graph with `n` nodes and a probability `p` of any two nodes being connected.
@@ -25,7 +30,7 @@ object GraphBench extends Bench.LocalTime:
     using(graph) in { (n, p) =>
       val random = util.Random(20001026)
       ReactiveAsync.handler:
-        val nodes = List.fill(n)(ReactiveAsync.cell[Int])
+        val nodes = List.fill(n)(ReactiveAsync.initial[Int](Update(util.Random.between(0, 99))))
         for
           i <- nodes
           j <- nodes
