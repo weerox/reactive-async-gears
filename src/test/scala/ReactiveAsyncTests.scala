@@ -3,14 +3,16 @@ package test
 
 import lattice.given
 
-class ReactiveAsyncTests extends munit.FunSuite:
-  test("create cell using default initial value") {
+import util.rerun
+
+class ReactiveAsyncTests extends util.AsyncSuite:
+  test("create cell using default initial value".rerun(100)) {
     val cell = ReactiveAsync.handler:
       ReactiveAsync.cell[Int]
     assertEquals(cell.get, summon[Lattice[Int]].bottom)
   }
 
-  test("create cell with initializer") {
+  test("create cell with initializer".rerun(100)) {
     val cell = ReactiveAsync.handler:
       ReactiveAsync.initialize:
         val x = 42
@@ -19,19 +21,19 @@ class ReactiveAsyncTests extends munit.FunSuite:
     assertEquals(cell.get, 96)
   }
 
-  test("create cell completed with given initial value") {
+  test("create cell completed with given initial value".rerun(100)) {
     val cell = ReactiveAsync.handler:
       ReactiveAsync.completed(42)
     assertEquals(cell.get, 42)
   }
 
-  test("create cell with initial value given outcome") {
+  test("create cell with initial value given outcome".rerun(100)) {
     val cell = ReactiveAsync.handler:
       ReactiveAsync.initial(Complete(42))
     assertEquals(cell.get, 42)
   }
 
-  test("one length path cell dependency") {
+  test("one length path cell dependency".rerun(100)) {
     val cell = ReactiveAsync.handler:
       val cell1 = ReactiveAsync.completed(72)
       val cell2 = ReactiveAsync.cell
@@ -46,7 +48,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
     assertEquals(cell.get, 72)
   }
 
-  test("two length path cell dependency") {
+  test("two length path cell dependency".rerun(400)) {
     val cell = ReactiveAsync.handler:
       val cell1 = ReactiveAsync.completed(72)
       val cell2 = ReactiveAsync.cell
@@ -67,7 +69,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
     assertEquals(cell.get, 72)
   }
 
-  test("exception in initializer results in a failed state") {
+  test("exception in initializer results in a failed state".rerun(100)) {
     val cell = ReactiveAsync.handler:
       val cell = ReactiveAsync.initialize[Int]:
         throw Exception()
@@ -78,7 +80,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
       case _         => fail("state was not Failed", clues(cell.state))
   }
 
-  test("exception in dependency handler results in a failed state") {
+  test("exception in dependency handler results in a failed state".rerun(200)) {
     val cell = ReactiveAsync.handler:
       val cell1 = ReactiveAsync.cell[Int]
       val cell2 = ReactiveAsync.cell[Int]
@@ -91,7 +93,7 @@ class ReactiveAsyncTests extends munit.FunSuite:
       case _         => fail("state was not Failed", clues(cell.state))
   }
 
-  test("get throws when cell is in failed state") {
+  test("get throws when cell is in failed state".rerun(100)) {
     val cell = ReactiveAsync.handler:
       val cell = ReactiveAsync.initialize[Int]:
         throw Exception()
