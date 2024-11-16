@@ -1,12 +1,15 @@
 package rasync
 
 import scala.collection.immutable.MultiDict
+import scala.util.boundary
 
-import gears.async.default.given
 import gears.async.{ Async, Future }
+import gears.async.UnboundedChannel
+import gears.async.Channel.Closed
 
 import cell.{ Cell, CellUpdater }
 import handler.DependencyHandler
+import handler.InitializationHandler
 
 /*
  A handler is restricted to hold cells with value V.
@@ -14,13 +17,21 @@ import handler.DependencyHandler
  but I'm not sure that is safe to do/the type system won't like it.
  */
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
-  var cells: List[CellUpdater[V]] = List()
+  private var cells: List[CellUpdater[V]] = List()
 
   // Mapping from a cell to the handlers which has that cell as a dependency.
   var handlers: MultiDict[Cell[V], DependencyHandler[V, ?, ?]] = MultiDict.empty
 
   // Cells which have been updated since the handlers where they are a dependency last ran.
   var updated: Set[Cell[V]] = Set()
+
+  def registerCell(cell: CellUpdater[V]): Unit =
+    cells = cell :: cells
+    cell.initializer match
+      case Some(initializer) => nextInitializer.sendImmediately(initializer)
+      // This case should never happen, since cells are only registered when
+      // they are in an uninitialized state.
+      case None =>
 
   def registerUpdate(cell: Cell[V]): Unit =
     updated = updated + cell
@@ -33,32 +44,33 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     for cell <- handler.dependencies do
       handlers = handlers - (cell -> handler)
 
-  def initialize(): Unit =
-    Async.blocking:
-      cells
-        .map(cell => cell.initializer)
-        .flatten
-        .map(handler =>
-          Future:
-            val result =
-              try
-                Right(handler.run())
-              catch
-                case e => Left(e)
-            (handler.cell, result)
-        )
-        .awaitAll
-        .map((cell, result) =>
-          result match
-            case Left(e) => cell.fail(e)
-            case Right(outcome) => outcome match
-                case Update(value) => cell.update(value)
-                case Complete(value) =>
-                  cell.update(value)
-                  cell.complete()
-        )
+  // Initializers are sent to this channel. To signal that there won't be any more
+  // initializers sent, send `null`.
+  private[rasync] val nextInitializer = UnboundedChannel[InitializationHandler[V]]()
+  def initialize()(using Async): Unit =
+    Async.group:
+      boundary:
+        while true do
+          nextInitializer.read() match
+            case Left(Closed) | Right(null) => boundary.break()
+            case Right(initializer) =>
+              val f = Future:
+                val result =
+                  try
+                    Right(initializer.run())
+                  catch
+                    case e => Left(e)
+                (initializer.cell, result)
+              val (cell, result) = f.await
+              result match
+                case Left(e) => cell.fail(e)
+                case Right(outcome) => outcome match
+                    case Update(value) => cell.update(value)
+                    case Complete(value) =>
+                      cell.update(value)
+                      cell.complete()
 
-  def run(): Unit =
+  def run()(using Async): Unit =
     var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty
 
     while
@@ -66,7 +78,7 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       updated = Set.empty
       handlers.nonEmpty
     do
-      Async.blocking:
+      Async.group:
         handlers
           .map(handler =>
             Future:
