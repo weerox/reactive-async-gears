@@ -50,24 +50,29 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     Async.group:
       boundary:
         while true do
-          nextInitializer.read() match
+          nextInitializer.readAll() match
             case Left(Closed) => boundary.break()
-            case Right(initializer) =>
-              val f = Future:
-                val result =
-                  try
-                    Right(initializer.run())
-                  catch
-                    case e => Left(e)
-                (initializer.cell, result)
-              val (cell, result) = f.await
-              result match
-                case Left(e) => cell.fail(e)
-                case Right(outcome) => outcome match
-                    case Update(value) => cell.update(value)
-                    case Complete(value) =>
-                      cell.update(value)
-                      cell.complete()
+            case Right(initializers) =>
+              initializers
+                .map(handler =>
+                  Future:
+                    val result =
+                      try
+                        Right(handler.run())
+                      catch
+                        case e => Left(e)
+                    (handler.cell, result)
+                )
+                .awaitAll
+                .map((cell, result) =>
+                  result match
+                    case Left(e) => cell.fail(e)
+                    case Right(outcome) => outcome match
+                        case Update(value) => cell.update(value)
+                        case Complete(value) =>
+                          cell.update(value)
+                          cell.complete()
+                )
 
   def run()(using Async): Unit =
     var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty

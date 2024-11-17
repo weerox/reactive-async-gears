@@ -63,3 +63,48 @@ class QueueChannelTests extends util.AsyncSuite:
 
       assertEquals(sum, 3)
   }
+
+  test("read all returns all sent values in order") {
+    Async.blocking:
+      val channel = QueueChannel[Int]
+      channel.send(1)
+      channel.send(2)
+      channel.send(3)
+      channel.close()
+      channel.readAll() match
+        case Right(Seq(1, 2, 3)) =>
+        case _                   => fail("did not get the expected values")
+  }
+
+  test("read and read all") {
+    Async.blocking:
+      val channel = QueueChannel[Int]
+      channel.send(1)
+      channel.send(2)
+      channel.send(3)
+      channel.close()
+      channel.read() match
+        case Right(1) =>
+        case _        => fail("expected to read a 1")
+      channel.readAll() match
+        case Right(Seq(2, 3)) =>
+        case _                => fail("did not get the expected values")
+  }
+
+  test("read and read all with close") {
+    Async.blocking:
+      val channel = QueueChannel[Int]
+      channel.send(1)
+      channel.send(2)
+      channel.send(3)
+      channel.close()
+      channel.read() match
+        case Right(1) =>
+        case _        => fail("expected to read a 1")
+      channel.readAll() match
+        case Right(Seq(2, 3)) =>
+        case _                => fail("did not get the expected values")
+      channel.read() match
+        case Left(Closed) =>
+        case _            => fail("expected the channel to be closed")
+  }
