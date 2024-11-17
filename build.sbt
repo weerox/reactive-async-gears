@@ -13,7 +13,11 @@ lazy val root = project
     libraryDependencies += "org.scalameta" %% "munit" % "1.0.0" % Test,
     libraryDependencies += ("com.storm-enroute" %% "scalameter" % "0.21" % Benchmark)
       .cross(CrossVersion.for3Use2_13),
-    semanticdbEnabled := true
+    semanticdbEnabled := true,
+    Compile / doc / scalacOptions ++= Seq("-private"),
+    Compile / doc / scalacOptions ++= Seq(
+      "-external-mappings:.*gears.*::scaladoc3::https://lampepfl.github.io/gears/api/"
+    )
   )
   .configs(Benchmark)
   .settings(

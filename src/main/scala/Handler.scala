@@ -4,12 +4,12 @@ import scala.collection.immutable.MultiDict
 import scala.util.boundary
 
 import gears.async.{ Async, Future }
-import gears.async.UnboundedChannel
 import gears.async.Channel.Closed
 
 import cell.{ Cell, CellUpdater }
 import handler.DependencyHandler
 import handler.InitializationHandler
+import util.QueueChannel
 
 /*
  A handler is restricted to hold cells with value V.
@@ -44,15 +44,14 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     for cell <- handler.dependencies do
       handlers = handlers - (cell -> handler)
 
-  // Initializers are sent to this channel. To signal that there won't be any more
-  // initializers sent, send `null`.
-  private[rasync] val nextInitializer = UnboundedChannel[InitializationHandler[V]]()
+  // Initializers are sent to this channel.
+  private[rasync] val nextInitializer = QueueChannel[InitializationHandler[V]]
   def initialize()(using Async): Unit =
     Async.group:
       boundary:
         while true do
           nextInitializer.read() match
-            case Left(Closed) | Right(null) => boundary.break()
+            case Left(Closed) => boundary.break()
             case Right(initializer) =>
               val f = Future:
                 val result =

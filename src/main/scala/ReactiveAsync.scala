@@ -12,7 +12,7 @@ object ReactiveAsync:
       val initialize = Future:
         handler.initialize()
       val result = body(using handler)
-      handler.nextInitializer.sendImmediately(null)
+      handler.nextInitializer.close()
       initialize.await
       handler.run()
       result
