@@ -1,6 +1,10 @@
 package rasync
 package cell
 
+import java.util.concurrent.atomic.AtomicReference
+
+import scala.annotation.tailrec
+
 import gears.async.Async
 
 import util.{ Container, ContainerMap }
@@ -16,53 +20,72 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
 
   // The state is initialized to `null`, but is set to `Uninitialized`
   // by all methods in the companion object.
-  private var _state: State[V] = null
-  override def state: State[V] = _state
+  private val _state: AtomicReference[State[V]] = AtomicReference(null)
+  override def state: State[V]                  = _state.get()
 
-  override def get: V = _state match
+  override def get: V = _state.get() match
     case Value(value)      => value
     case Failed(exception) => throw exception
     case Uninitialized()   => throw Exception("cell is uninitialized")
 
-  override def isCompleted(): Boolean = _state match
+  override def isCompleted(): Boolean = _state.get() match
     case Completed(_) => true
     case _            => false
 
-  override def isFailed(): Boolean = _state match
+  override def isFailed(): Boolean = _state.get() match
     case Failed(_) => true
     case _         => false
 
-  override def hasValue(): Boolean = _state match
+  override def hasValue(): Boolean = _state.get() match
     case Value(_) => true
     case _        => false
 
-  def initializer: Option[InitializationHandler[V]] = _state match
+  def initializer: Option[InitializationHandler[V]] = _state.get() match
     case state: Uninitialized[V] => Some(state.initializer)
     case _                       => None
 
-  def dependencies: Set[DependencyHandler[V, ?, ?]] = _state match
+  def dependencies: Set[DependencyHandler[V, ?, ?]] = _state.get() match
     case s: Uninitialized[V] => s.dependencies
     case s: Intermediate[V]  => s.dependencies
     case _                   => Set()
 
-  private def addDependency(handler: DependencyHandler[V, ?, ?]): Unit = _state match
+  @tailrec
+  private def addDependency(handler: DependencyHandler[V, ?, ?]): Unit = _state.get() match
     case state: Uninitialized[V] =>
-      _state = new Uninitialized(state.initializer, state.dependencies + handler)
-      this.handler.registerDependencyHandler(handler)
+      if _state.compareAndSet(
+          state,
+          new Uninitialized(state.initializer, state.dependencies + handler)
+        )
+      then this.handler.registerDependencyHandler(handler)
+      else addDependency(handler)
     case state: Intermediate[V] =>
-      _state = new Intermediate(state.value, state.dependencies + handler)
-      this.handler.registerDependencyHandler(handler)
+      if _state.compareAndSet(
+          state,
+          new Intermediate(state.value, state.dependencies + handler)
+        )
+      then this.handler.registerDependencyHandler(handler)
+      else addDependency(handler)
     // TODO Throw error?
     case _ =>
 
-  private[rasync] def removeDependency(handler: DependencyHandler[V, ?, ?]): Unit = _state match
-    case state: Uninitialized[V] =>
-      _state = new Uninitialized(state.initializer, state.dependencies - handler)
-      this.handler.deregisterDependencyHandler(handler)
-    case state: Intermediate[V] =>
-      _state = new Intermediate(state.value, state.dependencies - handler)
-      this.handler.deregisterDependencyHandler(handler)
-    case _ =>
+  @tailrec
+  private[rasync] final def removeDependency(handler: DependencyHandler[V, ?, ?]): Unit =
+    _state.get() match
+      case state: Uninitialized[V] =>
+        if _state.compareAndSet(
+            state,
+            new Uninitialized(state.initializer, state.dependencies - handler)
+          )
+        then this.handler.deregisterDependencyHandler(handler)
+        else removeDependency(handler)
+      case state: Intermediate[V] =>
+        if _state.compareAndSet(
+            state,
+            new Intermediate(state.value, state.dependencies - handler)
+          )
+        then this.handler.deregisterDependencyHandler(handler)
+        else removeDependency(handler)
+      case _ =>
 
   override def when(dependencies: Iterable[Cell[V]])(
       body: Iterable[State[V]] => Async ?=> Outcome[V]
@@ -79,44 +102,62 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
       body: Params => Async ?=> Outcome[V]
   ): Unit = addDependency(TupleDependencyHandler(this, dependencies, body))
 
-  def update(value: V): Unit = _state match
+  @tailrec
+  final def update(value: V): Unit = _state.get() match
     case state: Uninitialized[V] =>
-      _state = new Intermediate(value, state.dependencies)
-      handler.registerUpdate(this)
+      if _state.compareAndSet(
+          state,
+          new Intermediate(value, state.dependencies)
+        )
+      then handler.registerUpdate(this)
+      else update(value)
     case state: Intermediate[V] =>
       val next = handler.lattice.join(state.value, value)
       if state.value != next then
-        _state = new Intermediate(next, state.dependencies)
-        handler.registerUpdate(this)
+        if _state.compareAndSet(
+            state,
+            new Intermediate(next, state.dependencies)
+          )
+        then handler.registerUpdate(this)
+        else update(value)
     case _ =>
 
-  def complete(): Unit = _state match
-    case Intermediate(value) =>
-      _state = Completed(value)
-      handler.registerUpdate(this)
-    // NOTE Should this update the state to Failed instead of throwing?
-    case Uninitialized() => throw Exception("tried to complete a cell without a value")
-    case _               =>
+  @tailrec
+  final def complete(): Unit =
+    val current = _state.get()
+    current match
+      case Intermediate(value) =>
+        if _state.compareAndSet(current, Completed(value))
+        then handler.registerUpdate(this)
+        else complete()
+      // NOTE Should this update the state to Failed instead of throwing?
+      case Uninitialized() => throw Exception("tried to complete a cell without a value")
+      case _               =>
 
-  def fail(exception: Throwable): Unit = _state match
-    case Intermediate(_) | Uninitialized() =>
-      _state = Failed(exception)
-      // It seems reasonable to register a update here since the state
-      // actually changed. Someone might use the fact that the cell failed in
-      // a dependency handler.
-      handler.registerUpdate(this)
-    // If the cell is already completed or failed, then we won't fail it.
-    case Completed(_) | Failed(_) =>
+  @tailrec
+  final def fail(exception: Throwable): Unit =
+    val current = _state.get()
+    current match
+      case Intermediate(_) | Uninitialized() =>
+        if _state.compareAndSet(current, Failed(exception))
+        then
+          // It seems reasonable to register a update here since the state
+          // actually changed. Someone might use the fact that the cell failed in
+          // a dependency handler.
+          handler.registerUpdate(this)
+        else fail(exception)
+      // If the cell is already completed or failed, then we won't fail it.
+      case Completed(_) | Failed(_) =>
 
 object CellUpdater:
   def initial[V](initial: Update[V] | Complete[V])(using Handler[V]): CellUpdater[V] =
     val cell = new CellUpdater
-    cell._state = Uninitialized(InitializationHandler(cell, initial))
+    cell._state.set(Uninitialized(InitializationHandler(cell, initial)))
     cell
 
   def initializer[V](initializer: Async ?=> Update[V] | Complete[V])(using
       Handler[V]
   ): CellUpdater[V] =
     val cell = new CellUpdater
-    cell._state = Uninitialized(InitializationHandler(cell, initializer))
+    cell._state.set(Uninitialized(InitializationHandler(cell, initializer)))
     cell
