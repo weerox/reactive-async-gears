@@ -9,12 +9,11 @@ object ReactiveAsync:
   def handler[V, T](body: Handler[V] ?=> T)(using lattice: Lattice[V]): T =
     Async.blocking:
       val handler = Handler[V](lattice)
-      val initialize = Future:
-        handler.initialize()
+      val execution = Future:
+        handler.execute()
       val result = body(using handler)
-      handler.nextInitializer.close()
-      initialize.await
-      handler.run()
+      handler.done()
+      execution.await
       result
 
   // I would have liked to name all of these methods `cell`,

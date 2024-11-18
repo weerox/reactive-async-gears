@@ -46,7 +46,7 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
 
   // Initializers are sent to this channel.
   private[rasync] val nextInitializer = QueueChannel[InitializationHandler[V]]
-  def initialize()(using Async): Unit =
+  def execute_initializers()(using Async): Unit =
     Async.group:
       boundary:
         while true do
@@ -74,7 +74,7 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
                           cell.complete()
                 )
 
-  def run()(using Async): Unit =
+  def execute_dependencies()(using Async): Unit =
     var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty
 
     while
@@ -105,3 +105,22 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
                     dependent.complete()
                   case Nothing =>
           )
+
+  def execute()(using Async): Unit =
+    Async.group:
+      val init = Future:
+        execute_initializers()
+      init.await
+      _done.init = true
+      execute_dependencies()
+      _done.deps = true
+
+  class Done:
+    var setup = false
+    var init  = false
+    var deps  = false
+  val _done = Done()
+
+  def done(): Unit =
+    _done.setup = true
+    nextInitializer.close()
