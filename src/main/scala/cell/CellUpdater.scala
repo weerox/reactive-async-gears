@@ -152,12 +152,12 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
 object CellUpdater:
   def initial[V](initial: Update[V] | Complete[V])(using Handler[V]): CellUpdater[V] =
     val cell = new CellUpdater
-    cell._state.set(Uninitialized(InitializationHandler(cell, initial)))
+    cell._state.set(new Uninitialized(InitializationHandler(cell, initial), Set.empty))
     cell
 
   def initializer[V](initializer: Async ?=> Update[V] | Complete[V])(using
       Handler[V]
   ): CellUpdater[V] =
     val cell = new CellUpdater
-    cell._state.set(Uninitialized(InitializationHandler(cell, initializer)))
+    cell._state.set(new Uninitialized(InitializationHandler(cell, initializer), Set.empty))
     cell
