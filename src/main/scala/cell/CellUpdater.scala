@@ -28,18 +28,6 @@ private[rasync] class CellUpdater[V] private (using handler: Handler[V])
     case Failed(exception) => throw exception
     case Uninitialized()   => throw Exception("cell is uninitialized")
 
-  override def isCompleted(): Boolean = _state.get() match
-    case Completed(_) => true
-    case _            => false
-
-  override def isFailed(): Boolean = _state.get() match
-    case Failed(_) => true
-    case _         => false
-
-  override def hasValue(): Boolean = _state.get() match
-    case Value(_) => true
-    case _        => false
-
   def initializer: Option[InitializationHandler[V]] = _state.get() match
     case state: Uninitialized[V] => Some(state.initializer)
     case _                       => None

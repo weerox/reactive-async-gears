@@ -5,6 +5,7 @@ trait Cell[V]:
   def get: V
   def state: State[V]
 
-  def isCompleted(): Boolean
-  def isFailed(): Boolean
-  def hasValue(): Boolean
+  def isUninitialized = state.isUninitialized
+  def isCompleted     = state.isCompleted
+  def isFailed        = state.isFailed
+  def hasValue        = state.hasValue

@@ -120,20 +120,25 @@ class CellUpdaterTests extends munit.FunSuite:
   test("has value") {
     val cell = makeCell()
     cell.update(42)
-    assertEquals(cell.hasValue(), true)
+    assertEquals(cell.hasValue, true)
     cell.complete()
-    assertEquals(cell.hasValue(), true)
+    assertEquals(cell.hasValue, true)
+  }
+
+  test("is uninitialized") {
+    val cell = makeCell()
+    assertEquals(cell.isUninitialized, true)
   }
 
   test("is completed") {
     val cell = makeCell()
     cell.update(42)
     cell.complete()
-    assertEquals(cell.isCompleted(), true)
+    assertEquals(cell.isCompleted, true)
   }
 
   test("is failed") {
     val cell = makeCell()
     cell.fail(Exception())
-    assertEquals(cell.isFailed(), true)
+    assertEquals(cell.isFailed, true)
   }
