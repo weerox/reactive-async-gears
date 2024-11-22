@@ -3,6 +3,8 @@ package rasync
 import scala.collection.immutable.MultiDict
 import scala.util.boundary
 
+import java.util.concurrent.atomic.AtomicReference
+
 import gears.async.{ Async, Future }
 import gears.async.Channel.Closed
 
@@ -20,7 +22,8 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
   private var cells: List[CellUpdater[V]] = List()
 
   // Mapping from a cell to the handlers which has that cell as a dependency.
-  var handlers: MultiDict[Cell[V], DependencyHandler[V, ?, ?]] = MultiDict.empty
+  private val handlers: AtomicReference[MultiDict[Cell[V], DependencyHandler[V, ?, ?]]] =
+    AtomicReference(MultiDict.empty)
 
   // Cells which have been updated since the handlers where they are a dependency last ran.
   var updated: Set[Cell[V]] = Set()
@@ -37,12 +40,16 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     updated = updated + cell
 
   def registerDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
-    for cell <- handler.dependencies do
-      handlers = handlers + (cell -> handler)
+    handlers.getAndUpdate(handlers =>
+      handler.dependencies.foldLeft(handlers)((handlers, cell) =>
+        handlers + (cell -> handler)
+      )
+    )
 
   def deregisterDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
-    for cell <- handler.dependencies do
-      handlers = handlers - (cell -> handler)
+    handlers.getAndUpdate(handlers =>
+      handler.dependencies.foldLeft(handlers)((handlers, cell) => handlers - (cell -> handler))
+    )
 
   // Initializers are sent to this channel.
   private[rasync] val nextInitializer = QueueChannel[InitializationHandler[V]]
@@ -78,7 +85,7 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty
 
     while
-      handlers = updated.flatMap(cell => this.handlers.get(cell)).toSeq
+      handlers = updated.flatMap(cell => this.handlers.get().get(cell)).toSeq
       updated = Set.empty
       handlers.nonEmpty
     do
