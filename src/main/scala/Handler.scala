@@ -1,12 +1,10 @@
 package rasync
 
 import scala.collection.immutable.MultiDict
-import scala.util.boundary
 
 import java.util.concurrent.atomic.AtomicReference
 
 import gears.async.{ Async, Future }
-import gears.async.Channel.Closed
 
 import cell.{ Cell, CellUpdater }
 import handler.DependencyHandler
@@ -71,42 +69,41 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
   // Initializers are sent to this channel.
   private[rasync] val nextInitializer = QueueChannel[InitializationHandler[V]]
   def execute_initializers()(using Async): Unit =
-    Async.group:
-      boundary:
-        while true do
-          nextInitializer.readAll() match
-            case Left(Closed) => boundary.break()
-            case Right(initializers) =>
-              initializers
-                .map(handler =>
-                  Future:
-                    val result =
-                      try
-                        Right(handler.run())
-                      catch
-                        case e => Left(e)
-                    (handler.cell, result)
-                )
-                .awaitAll
-                .map((cell, result) =>
-                  result match
-                    case Left(e) => cell.fail(e)
-                    case Right(outcome) => outcome match
-                        case Update(value) => cell.update(value)
-                        case Complete(value) =>
-                          cell.update(value)
-                          cell.complete()
-                )
+    for
+      initializers <- Iterator
+        .continually(nextInitializer.readAll())
+        .takeWhile(_.isRight)
+        .collect { case Right(v) => v }
+    do
+      Async.group:
+        initializers
+          .map(handler =>
+            Future:
+              val result =
+                try
+                  Right(handler.run())
+                catch
+                  case e => Left(e)
+              (handler.cell, result)
+          )
+          .awaitAll
+          .map((cell, result) =>
+            result match
+              case Left(e) => cell.fail(e)
+              case Right(outcome) => outcome match
+                  case Update(value) => cell.update(value)
+                  case Complete(value) =>
+                    cell.update(value)
+                    cell.complete()
+          )
 
   def execute_dependencies()(using Async): Unit =
-    var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty
-
-    while
-      val execute = dependencies.awaitResult
-      execute match
-        case Some(e) => handlers = e.toSeq
-        case None    =>
-      execute.isDefined
+    for
+      handlers <- Iterator
+        .continually(dependencies.awaitResult)
+        .takeWhile(_.isDefined)
+        .flatten
+        .map(_.toSeq)
     do
       Async.group:
         handlers
