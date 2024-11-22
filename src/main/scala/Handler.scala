@@ -20,8 +20,8 @@ import util.Dependencies
 class Handler[V] private[rasync] (val lattice: Lattice[V]):
   private var cells: List[CellUpdater[V]] = List()
 
-  // Mapping from a cell to the handlers which has that cell as a dependency.
-  private val handlers: AtomicReference[MultiDict[Cell[V], DependencyHandler[V, ?, ?]]] =
+  // Reverse mapping from a cell to the dependency handlers which has that cell as a dependency.
+  private val reverseHandlers: AtomicReference[MultiDict[Cell[V], DependencyHandler[V, ?, ?]]] =
     AtomicReference(MultiDict.empty)
 
   // A source of dependencies that are scheduled to execute.
@@ -36,11 +36,11 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       case None =>
 
   def registerUpdate(cell: Cell[V]): Unit =
-    val h = handlers.get().get(cell)
+    val h = reverseHandlers.get().get(cell)
     if h.nonEmpty then dependencies.schedule(h)
 
   def registerDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
-    handlers.getAndUpdate(handlers =>
+    reverseHandlers.getAndUpdate(handlers =>
       handler.dependencies.foldLeft(handlers)((handlers, cell) =>
         handlers + (cell -> handler)
       )
@@ -62,7 +62,7 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     dependencies.schedule(Iterable.single(handler))
 
   def deregisterDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
-    handlers.getAndUpdate(handlers =>
+    reverseHandlers.getAndUpdate(handlers =>
       handler.dependencies.foldLeft(handlers)((handlers, cell) => handlers - (cell -> handler))
     )
 
