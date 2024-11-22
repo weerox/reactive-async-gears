@@ -12,6 +12,7 @@ import cell.{ Cell, CellUpdater }
 import handler.DependencyHandler
 import handler.InitializationHandler
 import util.QueueChannel
+import util.Dependencies
 
 /*
  A handler is restricted to hold cells with value V.
@@ -25,8 +26,8 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
   private val handlers: AtomicReference[MultiDict[Cell[V], DependencyHandler[V, ?, ?]]] =
     AtomicReference(MultiDict.empty)
 
-  // Cells which have been updated since the handlers where they are a dependency last ran.
-  var updated: Set[Cell[V]] = Set()
+  // A source of dependencies that are scheduled to execute.
+  private val dependencies = Dependencies[V]()
 
   def registerCell(cell: CellUpdater[V]): Unit =
     cells = cell :: cells
@@ -37,7 +38,8 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       case None =>
 
   def registerUpdate(cell: Cell[V]): Unit =
-    updated = updated + cell
+    val h = handlers.get().get(cell)
+    if h.nonEmpty then dependencies.schedule(h)
 
   def registerDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
     handlers.getAndUpdate(handlers =>
@@ -45,6 +47,21 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
         handlers + (cell -> handler)
       )
     )
+
+    // The cells that this dependency handler has as dependencies might have
+    // already been completed (or won't get more updates for some other reason).
+    // That would mean that this dependency handler would never get to run,
+    // so to make sure that it will run at least once, we will manually schedule it.
+    // NOTE This has to be done *after* we have added the reverse mappings for the dependencies.
+    // If the dependency handler was scheduled *before*, then we might run this handler
+    // *before* the reverse mappings are added. That could lead to the following chain of events:
+    // 1. We manually schedule this dependency handler.
+    // 2. This dependency handler is executed.
+    // 3. All dependencies of this dependency handler are completed.
+    // 4. The reverse mappings are registered.
+    // This means that we can't guarantee that a dependency handler will run on the final state
+    // of its dependencies.
+    dependencies.schedule(Iterable.single(handler))
 
   def deregisterDependencyHandler(handler: DependencyHandler[V, ?, ?]): Unit =
     handlers.getAndUpdate(handlers =>
@@ -85,9 +102,11 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     var handlers: Seq[DependencyHandler[V, ?, ?]] = Seq.empty
 
     while
-      handlers = updated.flatMap(cell => this.handlers.get().get(cell)).toSeq
-      updated = Set.empty
-      handlers.nonEmpty
+      val execute = dependencies.awaitResult
+      execute match
+        case Some(e) => handlers = e.toSeq
+        case None    =>
+      execute.isDefined
     do
       Async.group:
         handlers
@@ -117,9 +136,12 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     Async.group:
       val init = Future:
         execute_initializers()
+      val deps = Future:
+        execute_dependencies()
       init.await
       _done.init = true
-      execute_dependencies()
+      dependencies.stop()
+      deps.await
       _done.deps = true
 
   class Done:
