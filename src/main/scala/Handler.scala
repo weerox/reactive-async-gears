@@ -136,17 +136,9 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       val deps = Future:
         execute_dependencies()
       init.await
-      _done.init = true
       dependencies.stop()
       deps.await
-      _done.deps = true
 
-  class Done:
-    var setup = false
-    var init  = false
-    var deps  = false
-  val _done = Done()
 
   def done(): Unit =
-    _done.setup = true
     nextInitializer.close()
