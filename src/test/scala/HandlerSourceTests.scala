@@ -2,7 +2,7 @@ package rasync
 package test
 
 import rasync.cell.CellUpdater
-import rasync.util.Dependencies
+import rasync.util.DependencySource
 import rasync.handler.SingletonDependencyHandler
 import rasync.lattice.given
 
@@ -37,7 +37,7 @@ class HandlerSourceTests extends util.AsyncSuite:
 
   test("returns all dependency handlers if all dependent cells are initialized".rerun(100)) {
     Async.blocking:
-      val deps = Dependencies[Int]
+      val deps = DependencySource[Int]
       deps.schedule(Iterable.fill(3)(makeDependencyHandler()))
       val result = deps.awaitResult
       assert(result.isDefined)
@@ -46,7 +46,7 @@ class HandlerSourceTests extends util.AsyncSuite:
 
   test("returns only dependency handlers with initialized dependent cells".rerun(100)) {
     Async.blocking:
-      val deps = Dependencies[Int]
+      val deps = DependencySource[Int]
       deps.schedule(Iterable.single(makeDependencyHandler()))
       deps.schedule(Iterable.single(makeDependencyHandlerWithUninitializedDependent()))
       deps.schedule(Iterable.single(makeDependencyHandler()))
@@ -57,7 +57,7 @@ class HandlerSourceTests extends util.AsyncSuite:
 
   test("blocks if all dependency handlers have uninitialized dependent cells".rerun(100)) {
     Async.blocking:
-      val deps = Dependencies[Int]
+      val deps = DependencySource[Int]
       deps.schedule(Iterable.fill(3)(makeDependencyHandlerWithUninitializedDependent()))
       val result = withTimeoutOption(10.millis):
         deps.awaitResult
@@ -66,7 +66,7 @@ class HandlerSourceTests extends util.AsyncSuite:
 
   test("non empty stopped dependency source will return handlers".rerun(100)) {
     Async.blocking:
-      val deps = Dependencies[Int]
+      val deps = DependencySource[Int]
       deps.schedule(Iterable(makeDependencyHandler(), makeDependencyHandler()))
       deps.stop()
       val result = deps.awaitResult
@@ -76,7 +76,7 @@ class HandlerSourceTests extends util.AsyncSuite:
 
   test("empty stopped dependency source will immediately return".rerun(100)) {
     Async.blocking:
-      val deps = Dependencies[Int]
+      val deps = DependencySource[Int]
       deps.stop()
       val result = deps.awaitResult
       assertEquals(result, None)
@@ -84,7 +84,7 @@ class HandlerSourceTests extends util.AsyncSuite:
 
   test("two listeners will make one wait indefinitely".rerun(100)) {
     Async.blocking:
-      val deps = Dependencies[Int]
+      val deps = DependencySource[Int]
       val a = Future:
         deps.awaitResult
       val b = Future:

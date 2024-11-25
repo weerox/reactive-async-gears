@@ -10,7 +10,7 @@ import cell.{ Cell, CellUpdater }
 import handler.DependencyHandler
 import handler.InitializationHandler
 import util.QueueChannel
-import util.Dependencies
+import util.DependencySource
 
 /*
  A handler is restricted to hold cells with value V.
@@ -25,7 +25,7 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
     AtomicReference(MultiDict.empty)
 
   // A source of dependencies that are scheduled to execute.
-  private val dependencies = Dependencies[V]()
+  private val dependencies = DependencySource[V]()
 
   def registerCell(cell: CellUpdater[V]): Unit =
     cells = cell :: cells
