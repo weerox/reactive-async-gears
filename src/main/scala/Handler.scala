@@ -7,10 +7,8 @@ import java.util.concurrent.atomic.AtomicReference
 import gears.async.{ Async, Future }
 
 import cell.{ Cell, CellUpdater }
-import handler.DependencyHandler
-import handler.InitializationHandler
-import util.QueueChannel
-import util.DependencySource
+import handler.{ DependencyHandler, InitializationHandler }
+import util.{ DependencySource, InitializerSource }
 
 /*
  A handler is restricted to hold cells with value V.
@@ -27,10 +25,13 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
   // A source of dependencies that are scheduled to execute.
   private val dependencies = DependencySource[V]()
 
+  // A source of initializers that are scheduled to execute.
+  private val initializers = InitializerSource[V]()
+
   def registerCell(cell: CellUpdater[V]): Unit =
     cells = cell :: cells
     cell.initializer match
-      case Some(initializer) => nextInitializer.sendImmediately(initializer)
+      case Some(initializer) => initializers.schedule(initializer)
       // This case should never happen, since cells are only registered when
       // they are in an uninitialized state.
       case None =>
@@ -66,17 +67,16 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
       handler.dependencies.foldLeft(handlers)((handlers, cell) => handlers - (cell -> handler))
     )
 
-  // Initializers are sent to this channel.
-  private[rasync] val nextInitializer = QueueChannel[InitializationHandler[V]]
   def execute_initializers()(using Async): Unit =
     for
-      initializers <- Iterator
-        .continually(nextInitializer.readAll())
-        .takeWhile(_.isRight)
-        .collect { case Right(v) => v }
+      handlers <- Iterator
+        .continually(initializers.awaitResult)
+        .takeWhile(_.isDefined)
+        .flatten
+        .map(_.toSeq)
     do
       Async.group:
-        initializers
+        handlers
           .map(handler =>
             Future:
               val result =
@@ -141,4 +141,4 @@ class Handler[V] private[rasync] (val lattice: Lattice[V]):
 
 
   def done(): Unit =
-    nextInitializer.close()
+    initializers.stop()
