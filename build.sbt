@@ -4,6 +4,7 @@ lazy val root = project
   .in(file("."))
   .settings(
     name         := "reactive-async-gears",
+    organization := "se.aronbergman",
     version      := "0.1.0-SNAPSHOT",
     scalaVersion := "3.5.2",
     scalacOptions += "-explain",
